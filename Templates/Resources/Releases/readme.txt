@@ -50,6 +50,12 @@ To launch the game set the machine to medium resolution
 Double click on PLAY.PRG in the disk directory
 This version of the game supports the UNDO command
 
+Agon Light/Console8:
+Copy the contents of the Agon directory to your hard drive in to a new directory
+From inside the directory, type exec playgame.txt to play the game
+Requires MOS v3 or greater
+You can dismiss the intro screen faster by pressing any key
+
 MS-DOS:
 Copy the contents in the DOS directory to your hard drive
 Run PLAY.BAT to start the game

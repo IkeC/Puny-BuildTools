@@ -1,0 +1,5 @@
+# To play the game, simply type exec playgame.txt from the MOS prompt
+load CPCpic.bin &b0000
+IfThere SCREEN.SCR Then run &b0000 SCREEN.PAL SCREEN.SCR 4
+load Vezza.bin &b0000
+run &b0000 story.dat

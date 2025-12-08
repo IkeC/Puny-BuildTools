@@ -10,7 +10,7 @@ Welcome brave adventurer! If you're still into classic 8-bit / 16-bit home compu
 
 The following targets support Z-machine version 5 (XZIP) and Z-machine version 3 (ZIP) story files:
 
-_C64, Amiga, ZX Spectrum, Amstrad CPC/PCW, Atari ST, Atari 8-bit, MS-DOS, MSX, BBC Micro/Acorn Electron, C128, Plus/4, Apple II, SAM Coupe, TRS80 Model 3, TRS 80 Model 4, Mega65, classic Macintosh, modern PC._
+_C64, Amiga, ZX Spectrum, Amstrad CPC/PCW, Atari ST, Atari 8-bit, MS-DOS, MSX, BBC Micro/Acorn Electron, C128, Plus/4, Apple II, SAM Coupe, TRS80 Model 3, TRS 80 Model 4, Mega65, Agon Light/Console8, classic Macintosh, modern PC._
 
 > Note: Puny BuildTools projects by default are configured to target Z-machine version 5 and it's strongly recommended to keep it that way. The format is less restrictive and offers more options. The Z-machine version is defined in your project's config file. The BuildTools will ignore other Z-machine versions than 5 (default) or 3. Please consider that the Puny BuildTools are not intended to target mixed Z-machine versions. All targets will be built using the Z-machine version defined in your project's config file.
 
@@ -94,19 +94,7 @@ source ~/FictionTools/.punyrc
 source ~/FictionTools/.punywsl
 ```
 
-> Note to Linux and WSL2 users: The TRS80 Model 3 and TRS80 Model 4 targets require Wine32 to be installed. For this, your system will have to add the i386 architecture. If you think this is a fundamental overkill (I personally do), then add the line `source ~/FictionTools/.punyorb` in addition to the above. This will deactivate Wine32 targets and if you then try to build a TRS80 Model 3 or 4 disk image, you get a message that the architecture is not supported by your host system and is skipped.
-
 After you've made your changes, hit `CTRL X` to exit Nano. Make sure you select `Y` when you're asked to save the modified buffer.
-
-> Note: MacOS users have to skip the next step (Wine installation) as Wine32 won't run in OrbStack. Linux and WSL2 users that opted against the overkill of installing Wine32 should skip the next step, too.
-
-Considering all the disclaimers above, if you intend to install Wine, type these three commands:
-
-```
-sudo apt update && sudo apt install wine
-sudo dpkg --add-architecture i386
-sudo apt update && sudo apt install wine32
-```
 
 It's recommended to close all Terminal windows now and then open a new Bash instance. The changes you've made to `.bashrc` have now been applied.
 
@@ -260,7 +248,7 @@ There is one more thing to know. You probably noticed the `Resources` folder tha
 
 > Note: Loading screens are purely optional. If you don't provide one in `Resources`, the target is built without. The Puny BuildTools support you in rapidly creating screens though for quite a few targets. Some great utilities have been crafted exclusively for the Puny BuildTools for said purpose. You'll learn more about them in the "Bonus Content" section of this documentation.
 
-> Note: The MS-DOS target is the only one that doesn't create a disk image. Instead it places the output in a folder `DOS` inside the `Releases` folder in your project directory.
+> Note: The Agon Light/Console8 and MS-DOS targets do not create disk images. Instead they place the output in folders `Agon` and `DOS` respectively, inside the `Releases` folder in your project directory.
 
 ## An Author's Guide to the Galaxy
 
@@ -388,13 +376,6 @@ Hacks are settings which you can add to the configuration file of your project t
 
 #### APPLE2_Z3_INFOCOM=true
 Builds Apple II Z-machine version 3 targets with Infocom's interpreter version K instead of Vezza. This hack is ignored if `ZVERSION 5` is defined in your project's configuration file.
-
-## Limitations
-
-- MacOS: You cannot build TRS80 Model 3 and 4 disks since OrbStack does not support Wine32.
-- Linux/WSL2: You can build TRS80 Model 3 and 4 disks but only if you have Wine32 installed.
-
-> The TRS disk image builders will tell you that this target is not supported on your host system if your host is MacOS (via OrbStack) or if you opted to not install Wine32 during the installation process following the Puny BuildTools installation guide.
 
 ## Deprecated targets
 
