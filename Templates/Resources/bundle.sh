@@ -25,24 +25,17 @@ while getopts ':t:h' opt; do
         cp ~/FictionTools/Templates/Interpreters/ProDOS_SAM.dsk .
         cp ~/FictionTools/Templates/Interpreters/CPM_Plus_speccy.dsk .
         cp -R Releases/DOS .
+        cp -R Releases/Agon .
         if [ -f ${STORY}_dragon64.vdk ] ; then
             cp ~/FictionTools/Templates/Interpreters/dragon64_loader.vdk .
         fi
       
         # bundle disk images
-        zip -r ${STORY}_${RELEASE}.zip ${STORY}_apple2_s1.dsk ${STORY}_apple2_s2.dsk ${STORY}_speccy.dsk ${STORY}_amiga.adf ${STORY}_atari8bit.atr ${STORY}_c128.d71 ${STORY}_plus4.d64 ${STORY}_c64.d64 ${STORY}_mega65.d81 ${STORY}_cpc_pcw.dsk ${STORY}_atarist.st ${STORY}.z5 ${STORY}_bbc_elk.ssd ${STORY}_MSX.dsk CPM_Plus_speccy.dsk ${STORY}_mac.dsk ${STORY}_sam_coupe.cpm ProDOS_SAM.dsk PlayIF.pdf readme.txt licenses.txt game.transcript DOS
+        zip -r ${STORY}_${RELEASE}.zip ${STORY}_apple2_s1.dsk ${STORY}_apple2_s2.dsk ${STORY}_speccy.dsk ${STORY}_amiga.adf ${STORY}_atari8bit.atr ${STORY}_c128.d71 ${STORY}_plus4.d64 ${STORY}_c64.d64 ${STORY}_mega65.d81 ${STORY}_cpc_pcw.dsk ${STORY}_atarist.st ${STORY}.z5 ${STORY}_bbc_elk.ssd ${STORY}_MSX.dsk ${STORY}_trs80_m3.dsk ${STORY}_trs80_m4.dsk CPM_Plus_speccy.dsk ${STORY}_mac.dsk ${STORY}_sam_coupe.cpm ProDOS_SAM.dsk PlayIF.pdf readme.txt licenses.txt game.transcript DOS Agon
 
         # in case you also build a target with the hidden -b c128_d64.sh switch 
         if [ -f ${STORY}_c128.d64 ] ; then
             zip ${STORY}_${RELEASE}.zip ${STORY}_c128.d64
-        fi
-        # TRS80 Model 3 and 4 are optional targets, as they require Wine32, which 
-        # won't work for instance on MacOS, when using the BuildTools with Orbstack
-        if [ -f ${STORY}_trs80_m3.dsk ] ; then
-            zip ${STORY}_${RELEASE}.zip ${STORY}_trs80_m3.dsk
-        fi
-        if [ -f ${STORY}_trs80_m4.dsk ] ; then
-            zip ${STORY}_${RELEASE}.zip ${STORY}_trs80_m4.dsk
         fi
         # Z-machine version 3 only targets (deprecated) start here
         if [ -f ${STORY}.z3 ] ; then

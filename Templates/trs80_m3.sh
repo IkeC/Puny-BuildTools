@@ -14,18 +14,6 @@ if ! [ -f ${STORY}.z${ZVERSION} ] ; then
     exit 1
 fi
 
-#check if Wine targets are disabled (currently the case on MacOS)
-if [[ -v PUNY_WINE_TARGETS_OFF ]] ; then
-     echo -e "Your host system does not support running Wine. Operation aborted.\n"
-     exit 1
-fi
-
-#abort if Wine is not installed
-if ! [ -f /usr/bin/wine ] ; then
-    echo -e "You need Wine installed to build TRS80 Model 3 disks. Operation aborted.\n"
-    exit 1
-fi 
-
 #cleanup 
 if [ -f ${STORY}_trs80_m3.dsk ] ; then
     rm ${STORY}_trs80_m3.dsk
@@ -39,11 +27,14 @@ cp ~/FictionTools/Templates/Interpreters/TRS80_M3.dsk .
 
 #write story file on TRS-80 Model 3 (LDOS) disk image
 mv TRS80_M3.dsk ${STORY}_trs80_m3.dsk
-wine ~/FictionTools/trswrite.exe -o ${STORY}_trs80_m3.dsk STORY.DAT
+#wine ~/FictionTools/trswrite.exe -o ${STORY}_trs80_m3.dsk STORY.DAT
+trspunytool -x -s -i -ss -td4 -w ${STORY}_trs80_m3.dsk STORY.DAT
 printf "\n" # only cosmetical
+trspunytool -x -s -i -ss -td4 -w ${STORY}_trs80_m3.dsk ~/FictionTools/Templates/Interpreters/M3ZVM.CMD
+printf "\n" # only cosmetic
 trs80-tool dir ${STORY}_trs80_m3.dsk
 
 #post cleanup
 rm STORY.DAT
 
-echo -e "\nTRS80 Model 3 disk successfully built.\n"
+echo -e "\nTRS80 Model 3 disk successfully built if directory has STORY.DAT and M3ZVM.CMD.\n"
