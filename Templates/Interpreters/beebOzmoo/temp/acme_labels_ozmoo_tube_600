@@ -142,7 +142,7 @@
 	stack	= $100
 	select_lower_window	= $2445
 	turn_off_cursor	= $2652	; ?
-	ACORN_DYNAMIC_SIZE_BYTES	= $1b6f
+	ACORN_DYNAMIC_SIZE_BYTES	= $1ca8
 	ALLRAM	= $1
 	s_screenrowcolumn_from_cursor	= $1013
 	z_get_variable_reference	= $1b81
@@ -359,7 +359,7 @@
 	z_rnd_init	= $1cd6
 	datasette_buffer_end	= $2d66	; unused
 	stack_call_routine	= $2741	; ?
-	ACORN_INITIAL_NONSTORED_BLOCKS	= $1c
+	ACORN_INITIAL_NONSTORED_BLOCKS	= $1e
 	SMALLBLOCK	= $1
 	vdu_down	= $a
 	last_break_char_buffer_pos	= $8d

@@ -1,0 +1,587 @@
+
+; ******** Source: acorn-binary-lzsa.asm
+
+; ******** Source: acorn-constants.asm
+     1                          ; Acorn constants shared by multiple Acorn executables; constants only relevant
+     2                          ; to the main Ozmoo executable are in constants.asm
+     3                          
+     4                          osbyte = $fff4
+     5                          osbyte_read_host = 0
+     6                          
+     7                          romsel_copy = $f4
+     8                          bbc_romsel = $fe30
+     9                          electron_romsel = $fe05
+    10                          
+    11                          ram_bank_count = $904
+    12                          ram_bank_list = $905
+    13                          
+    14                          ; SFTODO: MOVE THIS?
+    15                          !macro assert .b {
+    16                              !if .b = 0 {
+    17                                  !error "assertion failed"
+    18                              }
+    19                          }
+
+; ******** Source: acorn-binary-lzsa.asm
+     1                          
+     2                          
+     3                          data_start
+     4  1316 19f0264cf831010d...    !binary "../temp/binary.lzsa2"
+     5                          data_end
+     6                          
+     7                          lzsa_cmdbuf     =       $70                     ; 1 byte.
+     8                          lzsa_nibflg     =       $71                     ; 1 byte.
+     9                          lzsa_nibble     =       $72                     ; 1 byte.
+    10                          lzsa_offset     =       $73                     ; 1 word.
+    11                          lzsa_winptr     =       $75                     ; 1 word.
+    12                          lzsa_srcptr     =       $77                     ; 1 word.
+    13                          lzsa_dstptr     =       $79                     ; 1 word.
+    14                          
+    15                          lzsa_length     =       lzsa_winptr             ; 1 word.
+    16                          
+    17                          LZSA_SRC_LO     =       lzsa_srcptr
+    18                          LZSA_SRC_HI     =       lzsa_srcptr + 1
+    19                          LZSA_DST_LO     =       lzsa_dstptr
+    20                          LZSA_DST_HI     =       lzsa_dstptr + 1
+    21                          
+    22                          decompress
+    23  380b a916                   lda #<data_start
+    24  380d 8577                   sta LZSA_SRC_LO
+    25  380f a913                   lda #>data_start
+    26  3811 8578                   sta LZSA_SRC_HI
+    27  3813 a900                   lda #<DECOMPRESS_TO
+    28  3815 8579                   sta LZSA_DST_LO
+    29  3817 a906                   lda #>DECOMPRESS_TO
+    30  3819 857a                   sta LZSA_DST_HI
+
+; ******** Source: acorn-lzsa-faster.asm
+     1                          ; This file is a lightly tweaked copy of decompress_faster_v2.asm from
+     2                          ; https://github.com/emmanuel-marty/lzsa.
+     3                          
+     4                          oscli = $fff7
+     5                          
+     6                          ; ***************************************************************************
+     7                          ; ***************************************************************************
+     8                          ;
+     9                          ; lzsa2_6502.s
+    10                          ;
+    11                          ; NMOS 6502 decompressor for data stored in Emmanuel Marty's LZSA2 format.
+    12                          ;
+    13                          ; This code is written for the ACME assembler.
+    14                          ;
+    15                          ; Optional code is presented for two minor 6502 optimizations that break
+    16                          ; compatibility with the current LZSA2 format standard.
+    17                          ;
+    18                          ; The code is 241 bytes for the small version, and 267 bytes for the normal.
+    19                          ;
+    20                          ; Copyright John Brandwood 2019.
+    21                          ;
+    22                          ; Distributed under the Boost Software License, Version 1.0.
+    23                          ; (See accompanying file LICENSE_1_0.txt or copy at
+    24                          ;  http://www.boost.org/LICENSE_1_0.txt)
+    25                          ;
+    26                          ; ***************************************************************************
+    27                          ; ***************************************************************************
+    28                          
+    29                          
+    30                          
+    31                          ; ***************************************************************************
+    32                          ; ***************************************************************************
+    33                          ;
+    34                          ; Decompression Options & Macros
+    35                          ;
+    36                          
+    37                                          ;
+    38                                          ; Choose size over space (within sane limits)?
+    39                                          ;
+    40                          
+    41                          LZSA_SMALL_SIZE =       0
+    42                          
+    43                                          ;
+    44                                          ; Remove code inlining to save space?
+    45                                          ;
+    46                                          ; This saves 15 bytes of code at the cost of 7% speed.
+    47                                          ;
+    48                          
+    49                                          !if      LZSA_SMALL_SIZE {
+    50                          LZSA_NO_INLINE  =       1
+    51                                          } else {
+    52                          LZSA_NO_INLINE  =       0
+    53                                          }
+    54                          
+    55                                          ;
+    56                                          ; Use smaller code for copying literals?
+    57                                          ;
+    58                                          ; This saves 11 bytes of code at the cost of 5% speed.
+    59                                          ;
+    60                          
+    61                                          !if      LZSA_SMALL_SIZE {
+    62                          LZSA_SHORT_CP   =       1
+    63                                          } else {
+    64                          LZSA_SHORT_CP   =       0
+    65                                          }
+    66                          
+    67                                          ;
+    68                                          ; We will read from or write to $FFFF.  This prevents the
+    69                                          ; use of the "INC ptrhi / BNE" trick and reduces speed.
+    70                                          ;
+    71                          
+    72                          LZSA_USE_FFFF  =        0
+    73                          
+    74                                          ;
+    75                                          ; Macro to increment the source pointer to the next page.
+    76                                          ;
+    77                          
+    78                                          !macro LZSA_INC_PAGE {
+    79                                                  inc     <lzsa_srcptr + 1
+    80                                          }
+    81                          
+    82                                          ;
+    83                                          ; Macro to read a byte from the compressed source data.
+    84                                          ;
+    85                          
+    86                                          !if     LZSA_NO_INLINE {
+    87                          
+    88                                                  !macro  LZSA_GET_SRC {
+    89                                                  jsr     lzsa2_get_byte
+    90                                                  }
+    91                          
+    92                                          } else {
+    93                          
+    94                                                  !macro  LZSA_GET_SRC {
+    95                                                  lda     (lzsa_srcptr),y
+    96                                                  inc     <lzsa_srcptr + 0
+    97                                                  bne     .skip
+    98                                                  +LZSA_INC_PAGE
+    99                          .skip:
+   100                                                  }
+   101                          
+   102                                          }
+   103                          
+   104                                          ;
+   105                                          ; Macro to speed up reading 50% of nibbles.
+   106                                          ;
+   107                                          ; This seems to save very few cycles compared to the
+   108                                          ; increase in code size, and it isn't recommended.
+   109                                          ;
+   110                          
+   111                          LZSA_SLOW_NIBL  =       1
+   112                          
+   113                                          !if     (LZSA_SLOW_NIBL + LZSA_SMALL_SIZE) {
+   114                          
+   115                                                  !macro  LZSA_GET_NIBL {
+   116                                                  jsr     lzsa2_get_nibble        ; Always call a function.
+   117                                                  }
+   118                          
+   119                                          } else {
+   120                          
+   121                                                  !macro  LZSA_GET_NIBL {
+   122                                                  lsr     <lzsa_nibflg            ; Is there a nibble waiting?
+   123                                                  lda     <lzsa_nibble            ; Extract the lo-nibble.
+   124                                                  bcs     .skip
+   125                                                  jsr     lzsa2_new_nibble        ; Extract the hi-nibble.
+   126                          .skip:                  ora     #$F0
+   127                                                  }
+   128                          
+   129                                          }
+   130                          
+   131                          
+   132                          
+   133                          ; ***************************************************************************
+   134                          ; ***************************************************************************
+   135                          ;
+   136                          ; Data usage is last 11 bytes of zero-page.
+   137                          ;
+   138                          ; SF: I've moved these definitions into acorn-binary-lzsa.asm to avoid
+   139                          ; oversized addressing mode warnings.
+   140                          
+   141                          ; ***************************************************************************
+   142                          ; ***************************************************************************
+   143                          ;
+   144                          ; lzsa2_unpack - Decompress data stored in Emmanuel Marty's LZSA2 format.
+   145                          ;
+   146                          ; Args: lzsa_srcptr = ptr to compessed data
+   147                          ; Args: lzsa_dstptr = ptr to output buffer
+   148                          ; Uses: lots!
+   149                          ;
+   150                          
+   151                          DECOMPRESS_LZSA2_FAST:
+   152  381b a000               lzsa2_unpack:   ldy     #0                      ; Initialize source index.
+   153  381d 8471                               sty     <lzsa_nibflg            ; Initialize nibble buffer.
+   154                          
+   155                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) = 0 {
+   156                          
+   157  381f f004                               beq     .cp_length              ; always taken
+   158                          .incsrc1:
+   159  3821 e678                               inc     <lzsa_srcptr + 1
+   160  3823 d008                               bne     .resume_src1            ; always taken
+   161                          
+   162                                          !if     LZSA_SHORT_CP {
+   163                          .incsrc2:
+   164                                          inc     <lzsa_srcptr + 1
+   165                                          bne     .resume_src2            ; always taken
+   166                          
+   167                          .incdst:
+   168                                          inc     <lzsa_dstptr + 1
+   169                                          bne     .resume_dst             ; always taken
+   170                          
+   171                                          }
+   172                          
+   173                                          }
+   174                          
+   175                                          ;
+   176                                          ; Copy bytes from compressed source data.
+   177                                          ;
+   178                          
+   179  3825 a200               .cp_length:     ldx     #$00                    ; Hi-byte of length or offset.
+   180                          
+   181                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) {
+   182                          
+   183                                          +LZSA_GET_SRC
+   184                          
+   185                                          } else {
+   186                          
+   187  3827 b177                               lda     (lzsa_srcptr),y
+   188  3829 e677                               inc     <lzsa_srcptr + 0
+   189  382b f0f4                               beq     .incsrc1
+   190                          
+   191                                          }
+   192                          
+   193                          .resume_src1:
+   194  382d 8570                               sta     <lzsa_cmdbuf            ; Preserve this for later.
+   195  382f 2918                               and     #$18                    ; Extract literal length.
+   196  3831 f034                               beq     .lz_offset              ; Skip directly to match?
+   197                          
+   198  3833 4a                                 lsr                             ; Get 2-bit literal length.
+   199  3834 4a                                 lsr
+   200  3835 4a                                 lsr
+   201  3836 c903                               cmp     #$03                    ; Extended length?
+   202  3838 d003                               bne     .got_cp_len
+   203                          
+   204  383a 20e438                             jsr     .get_length             ; X=0 table index for literals.
+   205                          
+   206                                          !if     LZSA_SHORT_CP {
+   207                          
+   208                          .got_cp_len:    cmp     #0                      ; Check the lo-byte of length.
+   209                                          beq     .put_cp_len
+   210                          
+   211                                          inx                             ; Increment # of pages to copy.
+   212                          
+   213                          .put_cp_len:    stx     <lzsa_length
+   214                                          tax
+   215                          
+   216                          .cp_page:       lda     (lzsa_srcptr),y
+   217                                          sta     (lzsa_dstptr),y
+   218                                          inc     <lzsa_srcptr + 0
+   219                          
+   220                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) {
+   221                          
+   222                                          bne     .skip1
+   223                                          inc     <lzsa_srcptr + 1
+   224                          .skip1:         inc     <lzsa_dstptr + 0
+   225                                          bne     .skip2
+   226                                          inc     <lzsa_dstptr + 1
+   227                          .skip2:
+   228                          
+   229                                          } else {
+   230                          
+   231                                          beq     .incsrc2
+   232                          .resume_src2:
+   233                                          inc     <lzsa_dstptr + 0
+   234                                          beq     .incdst
+   235                          .resume_dst:
+   236                          
+   237                                          }
+   238                          
+   239                                          dex
+   240                                          bne     .cp_page
+   241                                          dec     <lzsa_length            ; Any full pages left to copy?
+   242                                          bne     .cp_page
+   243                          
+   244                                          } else {
+   245                          
+   246  383d a8                 .got_cp_len:    tay                             ; Check the lo-byte of length.
+   247  383e f019                               beq     .cp_page
+   248                          
+   249  3840 e8                                 inx                             ; Increment # of pages to copy.
+   250                          
+   251  3841 18                 .get_cp_src:    clc                             ; Calc address of partial page.
+   252  3842 6577                               adc     <lzsa_srcptr + 0
+   253  3844 8577                               sta     <lzsa_srcptr + 0
+   254  3846 b002                               bcs     .get_cp_dst
+   255  3848 c678                               dec     <lzsa_srcptr + 1
+   256                          
+   257  384a 98                 .get_cp_dst:    tya
+   258  384b 18                                 clc                             ; Calc address of partial page.
+   259  384c 6579                               adc     <lzsa_dstptr + 0
+   260  384e 8579                               sta     <lzsa_dstptr + 0
+   261  3850 b002                               bcs     .get_cp_idx
+   262  3852 c67a                               dec     <lzsa_dstptr + 1
+   263                          
+   264  3854 98                 .get_cp_idx:    tya                             ; Negate the lo-byte of length.
+   265  3855 49ff                               eor     #$FF
+   266  3857 a8                                 tay
+   267  3858 c8                                 iny
+   268                          
+   269  3859 b177               .cp_page:       lda     (lzsa_srcptr),y
+   270  385b 9179                               sta     (lzsa_dstptr),y
+   271  385d c8                                 iny
+   272  385e d0f9                               bne     .cp_page
+   273  3860 e678                               inc     <lzsa_srcptr + 1
+   274  3862 e67a                               inc     <lzsa_dstptr + 1
+   275  3864 ca                                 dex                             ; Any full pages left to copy?
+   276  3865 d0f2                               bne     .cp_page
+   277                          
+   278                                          }
+   279                          
+   280                                          ; ================================
+   281                                          ; xyz  
+   282                                          ; 00z  5-bit offset
+   283                                          ; 01z  9-bit offset
+   284                                          ; 10z  13-bit offset
+   285                                          ; 110  16-bit offset
+   286                                          ; 111  repeat offset
+   287                          
+   288  3867 a570               .lz_offset:     lda     <lzsa_cmdbuf
+   289  3869 0a                                 asl
+   290  386a b01c                               bcs     .get_13_16_rep
+   291  386c 0a                                 asl
+   292  386d b012                               bcs     .get_9_bits
+   293                          
+   294  386f ca                 .get_5_bits:    dex                             ; X=$FF
+   295  3870 0a                 .get_13_bits:   asl
+   296  3871 08                                 php
+   297  3872 201f39                             +LZSA_GET_NIBL                  ; Always returns with CS.
+   298  3875 28                                 plp
+   299  3876 2a                                 rol                             ; Shift into position, set C.
+   300  3877 4901                               eor     #$01
+   301  3879 e000                               cpx     #$00                    ; X=$FF for a 5-bit offset.
+   302  387b d01a                               bne     .set_offset
+   303  387d e902                               sbc     #2                      ; Subtract 512 because 13-bit
+   304                                                                          ; offset starts at $FE00.
+   305  387f d00f                               bne     .get_low8x              ; Always NZ from previous SBC.
+   306                          
+   307  3881 ca                 .get_9_bits:    dex                             ; X=$FF if CS, X=$FE if CC.
+   308  3882 0a                                 asl
+   309  3883 900c                               bcc     .get_low8
+   310  3885 ca                                 dex
+   311  3886 b009                               bcs     .get_low8               ; Always VS from previous BIT.
+   312                          
+   313  3888 0a                 .get_13_16_rep: asl
+   314  3889 90e5                               bcc     .get_13_bits            ; Shares code with 5-bit path.
+   315                          
+   316  388b 300e               .get_16_rep:    bmi     .lz_length              ; Repeat previous offset.
+   317                          
+   318                                          ;
+   319                                          ; Copy bytes from decompressed window.
+   320                                          ;
+   321                                          ; N.B. X=0 is expected and guaranteed when we get here.
+   322                                          ;
+   323                          
+   324  388d 200539             .get_16_bits:   jsr     lzsa2_get_byte          ; Get hi-byte of offset.
+   325                          
+   326  3890 aa                 .get_low8x:     tax
+   327                          
+   328                          .get_low8:
+   329                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) {
+   330                          
+   331                                          +LZSA_GET_SRC                   ; Get lo-byte of offset.
+   332                          
+   333                                          } else {
+   334                          
+   335  3891 b177                               lda     (lzsa_srcptr),y
+   336  3893 e677                               inc     <lzsa_srcptr + 0
+   337  3895 f045                               beq     .incsrc3
+   338                          .resume_src3:
+   339                          
+   340                                          }
+   341                          
+   342  3897 8674               .set_offset:    stx     <lzsa_offset + 1        ; Save new offset.
+   343  3899 8573                               sta     <lzsa_offset + 0
+   344                          
+   345  389b a200               .lz_length:     ldx     #$00                    ; Hi-byte of length.
+   346                          
+   347  389d a570                               lda     <lzsa_cmdbuf
+   348  389f 2907                               and     #$07
+   349  38a1 18                                 clc
+   350  38a2 6902                               adc     #$02
+   351  38a4 c909                               cmp     #$09                    ; Extended length?
+   352  38a6 d004                               bne     .got_lz_len
+   353                          
+   354  38a8 e8                                 inx
+   355  38a9 20e438                             jsr     .get_length             ; X=1 table index for match.
+   356                          
+   357  38ac 49ff               .got_lz_len:    eor     #$FF                    ; Negate the lo-byte of length
+   358  38ae a8                                 tay                             ; and check for zero.
+   359  38af c8                                 iny
+   360  38b0 f00c                               beq     .calc_lz_addr
+   361  38b2 49ff                               eor     #$FF
+   362                          
+   363  38b4 e8                                 inx                             ; Increment # of pages to copy.
+   364                          
+   365  38b5 18                                 clc                             ; Calc destination for partial
+   366  38b6 6579                               adc     <lzsa_dstptr + 0        ; page.
+   367  38b8 8579                               sta     <lzsa_dstptr + 0
+   368  38ba b002                               bcs     .calc_lz_addr
+   369  38bc c67a                               dec     <lzsa_dstptr + 1
+   370                          
+   371  38be 18                 .calc_lz_addr:  clc                             ; Calc address of match.
+   372  38bf a579                               lda     <lzsa_dstptr + 0        ; N.B. Offset is negative!
+   373  38c1 6573                               adc     <lzsa_offset + 0
+   374  38c3 8575                               sta     <lzsa_winptr + 0
+   375  38c5 a57a                               lda     <lzsa_dstptr + 1
+   376  38c7 6574                               adc     <lzsa_offset + 1
+   377  38c9 8576                               sta     <lzsa_winptr + 1
+   378                          
+   379  38cb b175               .lz_page:       lda     (lzsa_winptr),y
+   380  38cd 9179                               sta     (lzsa_dstptr),y
+   381  38cf c8                                 iny
+   382  38d0 d0f9                               bne     .lz_page
+   383  38d2 e676                               inc     <lzsa_winptr + 1
+   384  38d4 e67a                               inc     <lzsa_dstptr + 1
+   385  38d6 ca                                 dex                             ; Any full pages left to copy?
+   386  38d7 d0f2                               bne     .lz_page
+   387                          
+   388  38d9 4c2538                             jmp     .cp_length              ; Loop around to the beginning.
+   389                          
+   390                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) = 0 {
+   391                          
+   392                          .incsrc3:
+   393  38dc e678                               inc     <lzsa_srcptr + 1
+   394  38de d0b7                               bne     .resume_src3            ; always taken
+   395                          
+   396                                          }
+   397                          
+   398                                          ;
+   399                                          ; Lookup tables to differentiate literal and match lengths.
+   400                                          ;
+   401                          
+   402  38e0 13                 .nibl_len_tbl:  !byte   3 + $10                 ; 0+3 (for literal).
+   403  38e1 19                                 !byte   9 + $10                 ; 2+7 (for match).
+   404                          
+   405  38e2 11                 .byte_len_tbl:  !byte   18 - 1                  ; 0+3+15 - CS (for literal).
+   406  38e3 17                                 !byte   24 - 1                  ; 2+7+15 - CS (for match).
+   407                          
+   408                                          ;
+   409                                          ; Get 16-bit length in X:A register pair.
+   410                                          ;
+   411                          
+   412  38e4 201f39             .get_length:    +LZSA_GET_NIBL
+   413  38e7 c9ff                               cmp     #$FF                    ; Extended length?
+   414  38e9 b006                               bcs     .byte_length
+   415  38eb 7de038                             adc     .nibl_len_tbl,x         ; Always CC from previous CMP.
+   416                          
+   417  38ee a200               .got_length:    ldx     #$00                    ; Set hi-byte of 4 & 8 bit
+   418  38f0 60                                 rts                             ; lengths.
+   419                          
+   420  38f1 200539             .byte_length:   jsr     lzsa2_get_byte          ; So rare, this can be slow!
+   421  38f4 7de238                             adc     .byte_len_tbl,x         ; Always CS from previous CMP.
+   422  38f7 90f5                               bcc     .got_length
+   423  38f9 f014                               beq     .finished
+   424                          
+   425  38fb 200539             .word_length:   jsr     lzsa2_get_byte          ; So rare, this can be slow!
+   426  38fe 48                                 pha
+   427  38ff 200539                             jsr     lzsa2_get_byte          ; So rare, this can be slow!
+   428  3902 aa                                 tax
+   429  3903 68                                 pla
+   430  3904 60                                 rts
+   431                          
+   432                          lzsa2_get_byte: 
+   433  3905 b177                               lda     (lzsa_srcptr),y         ; Subroutine version for when
+   434  3907 e677                               inc     <lzsa_srcptr + 0        ; inlining isn't advantageous.
+   435  3909 f001                               beq     lzsa2_next_page
+   436  390b 60                                 rts
+   437                          
+   438                          lzsa2_next_page:
+   439  390c e678                               inc     <lzsa_srcptr + 1        ; Inc & test for bank overflow.
+   440  390e 60                                 rts
+   441                          
+   442  390f 68                 .finished:      pla                             ; Decompression completed, pop
+   443  3910 68                                 pla                             ; return address.
+   444                                          ; We must enter the decompressed code using *GO on a second
+   445                                          ; processor so that a soft break re-enters it at that point;
+   446                                          ; see http://beebwiki.mdfs.net/Tube_Documentation_Errors.
+   447                                          !ifdef     TUBE {
+   448  3911 a218                               ldx     #<go_command
+   449  3913 a039                               ldy     #>go_command
+   450  3915 4cf7ff                             jmp     oscli
+   451                          go_command
+
+; ******** Source: ../temp/go.asm
+
+; ******** Source: acorn-lzsa-faster.asm
+   452  3918 474f203630300d     
+   453                                          } else {
+   454                                          jmp     DECOMPRESS_TO
+   455                                          }
+   456                          
+   457                                          ;
+   458                                          ; Get a nibble value from compressed data in A.
+   459                                          ;
+   460                          
+   461                                          !if     (LZSA_SLOW_NIBL | LZSA_SMALL_SIZE) {
+   462                          
+   463                          lzsa2_get_nibble:
+   464  391f 4671                               lsr     <lzsa_nibflg            ; Is there a nibble waiting?
+   465  3921 a572                               lda     <lzsa_nibble            ; Extract the lo-nibble.
+   466  3923 b00e                               bcs     .got_nibble
+   467                          
+   468  3925 e671                               inc     <lzsa_nibflg            ; Reset the flag.
+   469                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) {
+   470                          
+   471                                          +LZSA_GET_SRC
+   472                          
+   473                                          } else {
+   474                          
+   475  3927 b177                               lda     (lzsa_srcptr),y
+   476  3929 e677                               inc     <lzsa_srcptr + 0
+   477  392b f009                               beq     .incsrc4
+   478                          .resume_src4:
+   479                          
+   480                                          }
+   481                          
+   482  392d 8572                               sta     <lzsa_nibble            ; Preserve for next time.
+   483  392f 4a                                 lsr                             ; Extract the hi-nibble.
+   484  3930 4a                                 lsr
+   485  3931 4a                                 lsr
+   486  3932 4a                                 lsr
+   487                          
+   488  3933 09f0               .got_nibble:    ora     #$F0
+   489  3935 60                                 rts
+   490                          
+   491                                          } else {
+   492                          
+   493                          lzsa2_new_nibble:
+   494                                          inc     <lzsa_nibflg            ; Reset the flag.
+   495                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) {
+   496                          
+   497                                          +LZSA_GET_SRC
+   498                          
+   499                                          } else {
+   500                          
+   501                                          lda     (lzsa_srcptr),y
+   502                                          inc     <lzsa_srcptr + 0
+   503                                          beq     .incsrc4
+   504                          .resume_src4:
+   505                          
+   506                                          }
+   507                          
+   508                                          sta     <lzsa_nibble            ; Preserve for next time.
+   509                                          lsr                             ; Extract the hi-nibble.
+   510                                          lsr
+   511                                          lsr
+   512                                          lsr
+   513                                          rts
+   514                          
+   515                                          }
+   516                          
+   517                                          !if     (LZSA_NO_INLINE | LZSA_USE_FFFF) = 0 {
+   518                          
+   519                          .incsrc4:
+   520  3936 e678                               inc     <lzsa_srcptr + 1
+   521  3938 d0f3                               bne     .resume_src4            ; always taken
+   522                          
+   523                                          }
+
+; ******** Source: acorn-binary-lzsa.asm
+    31                          

@@ -138,7 +138,7 @@
 	select_lower_window	= $3e70
 	turn_off_cursor	= $407d	; ?
 	close_osgbpb_block_handle	= $3235	; ?
-	ACORN_DYNAMIC_SIZE_BYTES	= $1b6f
+	ACORN_DYNAMIC_SIZE_BYTES	= $1ca8
 	ACORN_WANT_OSGBPB_BLOCK	= $1
 	ALLRAM	= $1
 	s_screenrowcolumn_from_cursor	= $2827
@@ -365,7 +365,7 @@
 	z_rnd_init	= $3680
 	datasette_buffer_end	= $47b6	; unused
 	stack_call_routine	= $417f	; ?
-	ACORN_INITIAL_NONSTORED_BLOCKS	= $1c
+	ACORN_INITIAL_NONSTORED_BLOCKS	= $1e
 	SMALLBLOCK	= $1
 	vdu_down	= $a
 	last_break_char_buffer_pos	= $8d

@@ -8280,7 +8280,7 @@
    905  18f6 0000                   !word 0 ; exec address high
    906  18f8 f333                   !word stack_start - zp_bytes_to_save ; start address low
    907  18fa 0000                   !word 0 ; start address high
-   908  18fc 6f53                   !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
+   908  18fc a854                   !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
    909  18fe 0000                   !word 0 ; end address high
    910                          .osfile_save_load_block_master_end
    911                          .osfile_save_load_block_length = .osfile_save_load_block_master_end - .osfile_save_load_block_master
@@ -13157,7 +13157,7 @@
    201                          vmap_c64_offset !byte 0
    202                          } else {
    203                          !ifndef ACORN_SWR {
-   204  2970 54                 vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_BLOCKS + >story_start
+   204  2970 56                 vmap_first_ram_page		!byte ACORN_INITIAL_NONSTORED_BLOCKS + >story_start
    205  2971 00                 vmap_c64_offset !byte 0
    206                          }
    207                          }

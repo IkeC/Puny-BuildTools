@@ -8334,9 +8334,9 @@
    959  3168 8577                   sta .start_ptr
    960  316a a980                   lda #>story_start
    961  316c 8578                   sta .start_ptr + 1
-   962  316e a96f                   lda #<ACORN_DYNAMIC_SIZE_BYTES
+   962  316e a9a8                   lda #<ACORN_DYNAMIC_SIZE_BYTES
    963  3170 8d2804                 sta .osgbpb_save_length
-   964  3173 a91b                   lda #>ACORN_DYNAMIC_SIZE_BYTES
+   964  3173 a91c                   lda #>ACORN_DYNAMIC_SIZE_BYTES
    965  3175 8d2904                 sta .osgbpb_save_length + 1
    966  3178 207e31                 jsr .osfile_pseudo_emulation_save_internal
    967  317b 4c3532                 jmp close_osgbpb_block_handle

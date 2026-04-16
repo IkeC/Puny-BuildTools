@@ -88,9 +88,9 @@ xb=tb+ub
 IF xb>0 THEN PROCvb(xb,"main or sideways RAM")
 ENDPROC
 DEF PROCob
-IF l THEN ib$=":0.$.OZMOOE":pb=7424:qb=TRUE:tb=7168:ENDPROC
-IF h THEN ib$=":0.$.OZMOOSH":pb=&3100:qb=TRUE:tb=-512:ENDPROC
-ib$=":0.$.OZMOOB":pb=6400:qb=FALSE:tb=-5632
+IF l THEN ib$=":0.$.OZMOOE":pb=7424:qb=TRUE:tb=7680:ENDPROC
+IF h THEN ib$=":0.$.OZMOOSH":pb=&3100:qb=TRUE:tb=0:ENDPROC
+ib$=":0.$.OZMOOB":pb=6400:qb=FALSE:tb=-5120
 ENDPROC
 DEF PROCy
 DIM yb(8),zb(8)
