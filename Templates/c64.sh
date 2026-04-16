@@ -16,7 +16,8 @@ fi
 
 #cleanup 
 if [ -f ${STORY}_c64.d64 ] ; then
-    rm ${STORY}_c64.d64
+    chmod u+w ${STORY}_c64.d64 2>/dev/null || true
+    rm -f ${STORY}_c64.d64 2>/dev/null || true
 fi
 
 #check for loading screen and arrange resources
@@ -28,9 +29,14 @@ else
 fi
 
 #compile
-ruby ~/FictionTools/Templates/Interpreters/Ozmoo/make.rb -t:c64 ${LOADSCRFLAG}-dc:2:9 -ss1:"${LABEL}" -ss2:"Interactive Fiction" -ss3:"${SUBTITLE}" -sw:6 -dm:0 ${STORY}.z${ZVERSION}
+#ruby ~/FictionTools/Templates/Interpreters/Ozmoo/make.rb -t:c64 ${LOADSCRFLAG}-dc:2:9 -ss1:"${LABEL}" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -dm:0 ${STORY}.z${ZVERSION}
+ruby /mnt/c/Source/ozmoo/make.rb -ch -t:c64 ${LOADSCRFLAG}-ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
-mv c64_${STORY}.d64 ${STORY}_c64.d64
+if [ -f c64_${STORY}.d64 ] ; then
+    chmod u+w ${STORY}_c64.d64 2>/dev/null || true
+    rm -f ${STORY}_c64.d64 2>/dev/null || true
+    mv -f c64_${STORY}.d64 ${STORY}_c64.d64 2>/dev/null || cp -f c64_${STORY}.d64 ${STORY}_c64.d64 2>/dev/null || true
+fi
 
 #post-notification and cleanup
 if ! [ -f Resources/loadpic.kla ] ; then

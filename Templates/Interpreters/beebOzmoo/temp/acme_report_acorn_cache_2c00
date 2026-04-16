@@ -1,0 +1,787 @@
+
+; ******** Source: acorn-cache.asm
+     1                          ; Cache to use memory on the host in Acorn second processor builds.
+     2                          
+
+; ******** Source: acorn-constants.asm
+     1                          ; Acorn constants shared by multiple Acorn executables; constants only relevant
+     2                          ; to the main Ozmoo executable are in constants.asm
+     3                          
+     4                          osbyte = $fff4
+     5                          osbyte_read_host = 0
+     6                          
+     7                          romsel_copy = $f4
+     8                          bbc_romsel = $fe30
+     9                          electron_romsel = $fe05
+    10                          
+    11                          ram_bank_count = $904
+    12                          ram_bank_list = $905
+    13                          
+    14                          ; SFTODO: MOVE THIS?
+    15                          !macro assert .b {
+    16                              !if .b = 0 {
+    17                                  !error "assertion failed"
+    18                              }
+    19                          }
+
+; ******** Source: acorn-cache.asm
+     3                          
+     4                          
+     5                          userv = $200
+     6                          osword_a = $ef
+     7                          osword_x = $f0
+     8                          osword_y = $f1
+     9                          osword_block_ptr = $f0
+    10                          bbc_tube_data = $fee5
+    11                          electron_tube_data = $fce5
+    12                          tube_entry = $406
+    13                          tube_reason_claim = $c0
+    14                          tube_reason_release = $80
+    15                          tube_reason_256_byte_to_io = 6
+    16                          tube_reason_256_byte_from_io = 7
+    17                          osbyte_read_oshwm = $83
+    18                          osbyte_read_screen_address_for_mode = $85
+    19                          
+    20                          zp_temp = $f5 ; 3 bytes
+    21                          
+    22                          ; SFTODO: Electron support in here is not tested properly. It appears to lock up
+    23                          ; inside the tube host code trying to release the tube after copying a block
+    24                          ; from host to parasite, at $69e, where we have "bit $fce6 / bvc $69e". I
+    25                          ; suspect/hope that what's happening is the MAME timing is a bit off, as
+    26                          ; mentioned in passing at
+    27                          ; https://stardot.org.uk/forums/viewtopic.php?f=4&t=13351&p=287831&#p287831 and
+    28                          ; some of the data I'm sending is getting lost. I am using MAME 0.224 on Windows
+    29                          ; to test, and that predates that stardot comment.
+    30                          
+    31                          ; SFTODO: Arbitrarily chosen magic number for tube claims. I don't know if there is
+    32                          ; some standard number allocated to the foreground application.
+    33                          our_tube_reason_claim_id = $25 ; a six bit value
+    34                          
+    35                          ; When current_tick would wrap round to 0, we subtract timestamp_adjustment from
+    36                          ; all the existing timestamps (setting any which would become negative to 0). A
+    37                          ; small value of timestamp_adjustment preserves more useful range in the
+    38                          ; timestamps, but at the cost of having to do the adjustment more often.
+    39                          timestamp_adjustment = $40 ; SFTODO: $80?
+    40                          
+    41                          page_in_swr_bank_a_electron_size = 13
+    42                          
+    43                          !macro assert_no_page_crossing .target {
+    44                              !if (>*) <> (>.target) {
+    45                                  !error "Unacceptable page crossing"
+    46                              }
+    47                          }
+    48                          
+    49                          program_start
+    50  2c00 4c312e                 jmp relocate_setup
+    51                          
+    52                          our_userv
+    53  2c03 c9e0                   cmp #$E0
+    54  2c05 f059                   beq our_osword
+    55  2c07 c900                   cmp #0
+    56  2c09 f003                   beq our_osbyte ; *CODE/OSBYTE $88
+    57  2c0b 6ce52d                 jmp (old_userv)
+    58                          
+    59                              ; SFTODO: ON A RESTART OZMOO BINARY WILL PROBABLY INVOKE THIS OSBYTE, SHOULD WE MAKE IT PRESERVE ITS CACHE WHEN CALLED WITH "SAME" X OR ON A SUBSEQUENT CALL OR SOMETHING? THIS MIGHT HELP SPEED UP A RESTART AS THIS CACHE MAY BE USABLE FOR LOADING. OTOH THIS MAY BE AN EXTRA SOURCE OF OBSCURE BUGS ON A RESTART.
+    60                          ; OSBYTE $88 - host cache initialisation
+    61                          ;
+    62                          ; On entry:
+    63                          ;   X is the screen mode the cache needs to leave space for
+    64                          ;
+    65                          ; On exit:
+    66                          ;   X contains the number of 512-byte blocks the cache holds
+    67                          our_osbyte
+    68                          cache_entries_high = zp_temp ; 1 byte
+    69                              ; We have RAM available between low_cache_start and the screen in mode X.
+    70  2c0e a985                   lda #osbyte_read_screen_address_for_mode
+    71  2c10 20f4ff                 jsr osbyte
+    72                              ; The following calculation will correctly discard any odd pages, so we
+    73                              ; don't need to be double-page aligned in order to make things work nicely.
+    74  2c13 98                     tya
+    75  2c14 38                     sec
+    76  2c15 e931                   sbc #>low_cache_start
+    77  2c17 4a                     lsr
+    78  2c18 8d002e                 sta low_cache_entries
+    79                          
+    80                              ; Each 16K sideways RAM bank holds 32*512-byte blocks.
+    81  2c1b a900                   lda #0
+    82  2c1d 85f5                   sta cache_entries_high
+    83  2c1f ad0409                 lda ram_bank_count
+    84  2c22 a205                   ldx #5 ; 32 == 2^5
+    85  2c24 0a                 -   asl
+    86  2c25 26f5                   rol cache_entries_high
+    87  2c27 ca                     dex
+    88  2c28 d0fa                   bne -
+    89  2c2a 6d002e                 adc low_cache_entries
+    90  2c2d 8de72d                 sta cache_entries
+    91  2c30 9002                   bcc +
+    92  2c32 e6f5                   inc cache_entries_high
+    93                          +
+    94                          
+    95                              ; We don't support more than 255 cache entries.
+    96  2c34 ace72d                 ldy cache_entries
+    97  2c37 a5f5                   lda cache_entries_high
+    98  2c39 f002                   beq +
+    99  2c3b a0ff                   ldy #255
+   100  2c3d 8ce72d             +   sty cache_entries
+   101                          
+   102                              ; The cache size doesn't change at runtime, it's always full with
+   103                              ; cache_entries entries, but it starts full of very old entries with the
+   104                              ; invalid block ID. This means those entries will be evicted in preference
+   105                              ; to any real entries and will never be returned in response to a cache
+   106                              ; lookup.
+   107  2c40 a900               -   lda #0
+   108  2c42 990030                 sta cache_timestamp - 1,y
+   109  2c45 a9ff                   lda #$ff
+   110  2c47 99002e                 sta cache_id_low - 1,y
+   111  2c4a 99002f                 sta cache_id_high - 1,y
+   112  2c4d 88                     dey
+   113  2c4e d0f0                   bne -
+   114                          
+   115                              ; All the blocks are free, so let's set free_block_index to 0.
+   116  2c50 8c002f                 sty free_block_index
+   117                          
+   118                              ; The initial dummy cache entries have timestamp 0, so we start current_tick at 1.
+   119  2c53 a901                   lda #1
+   120  2c55 8d0030                 sta current_tick ; SFTODO: Rename "current_timestamp"??
+   121                          
+   122                              ; Because in practice the cache will always be offered a block when a block
+   123                              ; is requested from it and processing that offered block will involve
+   124                              ; discarding the oldest block even if it could have satisfied the request
+   125                              ; being made, the cache is effectively one block smaller than its nominal
+   126                              ; size, so that's what we report to the caller. (The only practical upshot
+   127                              ; of this is that the preload won't load a block which can never be
+   128                              ; successfully retrieved, which saves a tiny amount of time.)
+   129                              ;
+   130                              ; To avoid this we'd need to do a swap when a block was offered and the
+   131                              ; cache could satisfy the request, but that would complicate the code
+   132                              ; significantly. If we set aside a 512 byte buffer for use in the swap we'd
+   133                              ; be no better off than we are now, because the cache would have to be one
+   134                              ; block smaller to make room for that buffer, so the swap would have to be
+   135                              ; written to work in smaller chunks as well.
+   136  2c58 aee72d                 ldx cache_entries
+   137  2c5b ca                     dex
+   138  2c5c 60                     rts
+   139                          
+   140                              ; Waste some space so we avoid unwanted page crossing in time-critical loops.
+   141  2c5d 000000                 !fill 3
+   142                          
+   143                          ; OSWORD &E0 - host cache access
+   144                          ;
+   145                          ; On entry:
+   146                          ;   YX?0:     12 (send block length)
+   147                          ;   YX?1:     12 (receive block length)
+   148                          ;   YX!2:     address of 512-byte data block (high word must be 0) SFTODO: GET RID OF () BIT, IT'S TRUE-ISH BUT NOT REALLY THAT HELPFUL AND POSS NOT QUITE TRUE ONCE WE HAVE TURBO SUPPORT
+   149                          ;   YX?6..7:  ID of 512-byte block currently held at YX!2 (offered to cache)
+   150                          ;             (ID $FFFF means no block is being offered to the cache.)
+   151                          ;             SFTODO: We could use 0 for this special case, Ozmoo will never pass 0 as it will be in dynamic memory - FF does have the small (?) advantage that as it's odd, it can never match the low byte of anything Ozmoo will pass, which may slightly help to optimise searching
+   152                          ;   YX?8:     Timestamp hint for offered block, or $FF for no hint.
+   153                          ;   YX?9..10: ID of 512-byte block wanted at YX!2 (requested from cache)
+   154                          ;
+   155                          ; On exit:
+   156                          ;   YX?11:    0 ("no error") means data at YX!2 replaced with block YX?9..10
+   157                          ;             non-0 means block YX?9..10 is not in cache and data at YX!2 not
+   158                          ;             modified
+   159                          ;
+   160                          ; In practice a block ID of $ABCD will correspond to the 512-byte block of
+   161                          ; Z-machine address space starting at $ABCD00, but this code doesn't actually
+   162                          ; care.
+   163                          ;
+   164                          ; The implementation removes blocks from the cache when they are provided to the
+   165                          ; caller. This means that a block is either in this cache or in the caller's own
+   166                          ; cache, not both. It also means that when the caller offers us a block, we know
+   167                          ; it isn't in our cache already, provided (as is the case in practice) the
+   168                          ; caller always queries us before loading a block from disk itself.
+   169                          ;
+   170                          ; SFTODO: PSEUDOCODE NEEDS UPDATING TO REFLECT TIMESTAMP HINTS
+   171                          ; Pseudocode:
+   172                          ;   if block_offered != 0xffff:
+   173                          ;       if g_free_block_index is None:
+   174                          ;           g_free_block_index = find_oldest_block_index()
+   175                          ;       cache_timestamp[g_free_block_index] = current_tick
+   176                          ;       cache_id[g_free_block_index] = block_offered
+   177                          ;       cache[g_free_block_index] = block
+   178                          ;       g_free_block_index = None
+   179                          ;       advance_tick()
+   180                          ;   for i in range(0, cache_entries):
+   181                          ;       if cache_id[i] == block_requested:
+   182                          ;           cache_timestamp[i] = 0
+   183                          ;           cache_id[i] = 0xffff
+   184                          ;           g_free_block_index = i
+   185                          ;           return cache[i]
+   186                          ;   return None
+   187                          
+   188                          our_osword_data_offset = 2
+   189                          our_osword_block_offered_offset = 6
+   190                          our_osword_block_offered_timestamp_hint_offset = 8
+   191                          our_osword_block_requested_offset = 9
+   192                          our_osword_result_offset = 11
+   193                          our_osword
+   194                          our_cache_ptr = zp_temp ; 2 bytes
+   195                          count = zp_temp + 2 ; 1 byte
+   196                          
+   197  2c60 a5f4                   lda romsel_copy
+   198  2c62 48                     pha
+   199                          
+   200                              ; Is a block being offered to us by the caller?
+   201  2c63 a007                   ldy #our_osword_block_offered_offset + 1
+   202  2c65 b1f0                   lda (osword_block_ptr),y
+   203  2c67 aa                     tax
+   204  2c68 88                     dey
+   205  2c69 b1f0                   lda (osword_block_ptr),y
+   206  2c6b c9ff                   cmp #$ff ; SFTODO MAGIC NUMBER
+   207  2c6d d007                   bne block_offered
+   208  2c6f e0ff                   cpx #$ff ; SFTODO MAGIC NUMBER
+   209  2c71 d003                   bne block_offered
+   210  2c73 4c172d                 jmp no_block_offered ; SFTODO: can we avoid indirect branch?
+   211                          block_offered
+   212                              ; A block is being offered to us. If free_block_index doesn't already identify
+   213                              ; somewhere in the cache to store it, find the oldest entry in the cache so we
+   214                              ; can re-use it.
+   215  2c76 ae002f                 ldx free_block_index
+   216  2c79 e0ff                   cpx #free_block_index_none
+   217  2c7b d01a                   bne have_free_block_index_in_x
+   218  2c7d ace72d                 ldy cache_entries
+   219  2c80 88                     dey
+   220                              ; Start off by assuming the 0th entry is the oldest.
+   221                          oldest_index = zp_temp
+   222  2c81 a900                   lda #0
+   223  2c83 85f5                   sta oldest_index
+   224  2c85 ad0130                 lda cache_timestamp
+   225                              ; Now examine all the other entries (Y=cache_entries - 1 down to 1
+   226                              ; inclusive) to find the oldest.
+   227                          find_oldest_loop
+   228  2c88 d90130                 cmp cache_timestamp,y
+   229  2c8b 9005                   bcc newer_than_a
+   230  2c8d 84f5                   sty oldest_index
+   231  2c8f b90130                 lda cache_timestamp,y
+   232                              ; SFTODO: We could beq to escape if we've found a maximally-aged block already, not sure if this is worth it or not
+   233                          newer_than_a
+   234  2c92 88                     dey
+   235  2c93 d0f3                   bne find_oldest_loop
+   236  2c95 a6f5                   ldx oldest_index
+   237                          have_free_block_index_in_x
+   238                          
+   239                              ; Update the cache metadata for the new block at index X.
+   240  2c97 a006                   ldy #our_osword_block_offered_offset
+   241  2c99 b1f0                   lda (osword_block_ptr),y
+   242  2c9b 9d012e                 sta cache_id_low,x
+   243  2c9e c8                     iny
+   244  2c9f b1f0                   lda (osword_block_ptr),y
+   245  2ca1 9d012f                 sta cache_id_high,x
+   246                              ; SFTODO: Potential to do iny instead of ldy #, but lack of assert in acme makes me a bit edgy about it
+   247  2ca4 a008                   ldy #our_osword_block_offered_timestamp_hint_offset
+   248  2ca6 b1f0                   lda (osword_block_ptr),y
+   249  2ca8 c9ff                   cmp #$ff
+   250  2caa f011                   beq no_timestamp_hint
+   251                              ; We have a timestamp hint. current_tick isn't incremented automatically in
+   252                              ; this case (otherwise the initial cache population may end up squashing
+   253                              ; some of the timestamps down to zero as we populate a large cache a block
+   254                              ; at a time), but we ensure current_tick is strictly greater than the
+   255                              ; timestamp hint so blocks added to the cache during normal use are
+   256                              ; correctly treated as more recent.
+   257  2cac cd0030                 cmp current_tick
+   258  2caf 9006                   bcc timestamp_hint_less_than_current_tick
+   259  2cb1 8d0030                 sta current_tick
+   260  2cb4 ee0030                 inc current_tick ; can't wrap as hint != $ff
+   261                          timestamp_hint_less_than_current_tick
+   262  2cb7 9d0130                 sta cache_timestamp,x
+   263  2cba 4ce02c                 jmp timestamp_updated
+   264                          no_timestamp_hint
+   265  2cbd ad0030                 lda current_tick
+   266  2cc0 9d0130                 sta cache_timestamp,x
+   267                              ; Increment current_tick.
+   268  2cc3 ee0030                 inc current_tick
+   269  2cc6 d018                   bne tick_not_wrapped
+   270                              ; SFTODO: FWIW in the benchmark this tick adjust case only occurs once (rather dated comment, may no longer be true)
+   271  2cc8 ace72d                 ldy cache_entries
+   272                          tick_adjust_loop
+   273  2ccb b90030                 lda cache_timestamp - 1,y
+   274  2cce 38                     sec
+   275  2ccf e940                   sbc #timestamp_adjustment
+   276  2cd1 b002                   bcs adjusted_timestamp_not_negative
+   277  2cd3 a900                   lda #0
+   278                          adjusted_timestamp_not_negative
+   279  2cd5 990030                 sta cache_timestamp - 1,y
+   280  2cd8 88                     dey
+   281  2cd9 d0f0                   bne tick_adjust_loop
+   282  2cdb a9c0                   lda #($100 - timestamp_adjustment)
+   283  2cdd 8d0030                 sta current_tick
+   284                          tick_not_wrapped
+   285                          timestamp_updated
+   286                          
+   287                              ; Reset free_block_index.
+   288  2ce0 a9ff                   lda #free_block_index_none
+   289  2ce2 8d002f                 sta free_block_index
+   290                          
+   291                              ; Set our_cache_ptr to the block's data so we can update it.
+   292  2ce5 8a                     txa
+   293  2ce6 a8                     tay
+   294  2ce7 20bc2d                 jsr set_our_cache_ptr_to_index_y
+   295                          
+   296                              ; Copy the 512-byte block offered to the cache into the block pointed to by
+   297                              ; our_cache_ptr.
+   298  2cea 208f2d                 jsr claim_tube
+   299  2ced a902                   lda #2
+   300  2cef 85f7                   sta count
+   301                          copy_offered_block_loop
+   302  2cf1 209c2d                 jsr set_yx_to_tube_transfer_block
+   303  2cf4 a906                   lda #tube_reason_256_byte_to_io
+   304  2cf6 200604                 jsr tube_entry
+   305                              ; We now need a 19 microsecond/38 cycle delay.
+   306  2cf9 a207                   ldx #7     ; 2 cycles
+   307                          wait_x
+   308  2cfb ca                     dex        ; 2*7=14 cycles
+   309  2cfc d0fd                   bne wait_x ; 3*6+2=20 cycles
+   310                              +assert_no_page_crossing wait_x
+   311  2cfe a000                   ldy #0     ; 2 cycles
+   312                              ; SFTODO: Kind of stating the obvious, but the tube loops obviously burn loads of CPU time, so even if it feels inefficient to be iterating over 255 cache entries once or twice per call to check timestamps or whatever, remember we have to do 512 iterations of this loop and/or the other similar tube loop, so that other code isn't negligible but is diluted. Plus of course we are saving a trip to disc.
+   313                          tube_read_loop
+   314                          lda_abs_tube_data
+   315  2d00 ade5fe                 lda bbc_tube_data
+   316                              ; We now need a 10 microsecond/20 cycle delay.
+   317  2d03 91f5                   sta (our_cache_ptr),y ; 6 cycles
+   318  2d05 b1f5                   lda (our_cache_ptr),y ; 5 cycles (dummy, cache is page-aligned so not 6)
+   319  2d07 b5f5                   lda our_cache_ptr,x   ; 4 cycles (dummy)
+   320  2d09 c8                     iny                   ; 2 cycles
+   321  2d0a d0f4                   bne tube_read_loop    ; 3 cycles if we branch
+   322                              +assert_no_page_crossing tube_read_loop
+   323  2d0c 20a82d                 jsr do_loop_tail_common
+   324  2d0f d0e0                   bne copy_offered_block_loop
+   325  2d11 20972d                 jsr release_tube
+   326  2d14 20b22d                 jsr reset_osword_block_data_offset
+   327                          no_block_offered
+   328                          
+   329                              ; Do we have the requested block in cache?
+   330  2d17 a00a                   ldy #our_osword_block_requested_offset + 1
+   331  2d19 b1f0                   lda (osword_block_ptr),y
+   332  2d1b aa                     tax
+   333  2d1c 88                     dey
+   334  2d1d b1f0                   lda (osword_block_ptr),y
+   335                              ; XA now contains the requested block ID.
+   336  2d1f ace72d                 ldy cache_entries
+   337                              ; Although it's probably not a big deal, this loop accounts for most of our
+   338                              ; cycles outside the tube copy loops. We therefore save a cycle in the
+   339                              ; common case where the low bytes don't match by making that the straight
+   340                              ; line case.
+   341                          find_cache_entry_by_id_loop
+   342  2d22 d9002e                 cmp cache_id_low - 1,y
+   343  2d25 f00b                   beq possible_match
+   344                          not_match
+   345  2d27 88                     dey
+   346  2d28 d0f8                   bne find_cache_entry_by_id_loop
+   347                              +assert_no_page_crossing find_cache_entry_by_id_loop
+   348                              ; We don't have the requested block.
+   349  2d2a a901                   lda #1
+   350  2d2c a00b                   ldy #our_osword_result_offset
+   351  2d2e 91f0                   sta (osword_block_ptr),y
+   352  2d30 d04f                   bne our_osword_done ; Always branch
+   353                          possible_match
+   354  2d32 85f5                   sta zp_temp
+   355  2d34 8a                     txa
+   356  2d35 d9002f                 cmp cache_id_high - 1,y
+   357  2d38 f005                   beq match
+   358  2d3a a5f5                   lda zp_temp
+   359  2d3c 4c272d                 jmp not_match
+   360                          match
+   361  2d3f 88                     dey ; so Y contains a 0-based index not a 1-based index as in the loop above
+   362                          
+   363                              ; We do have the requested block, at index Y. Remove it from our cache,
+   364                              ; since the caller will be taking ownership of it.
+   365  2d40 a900                   lda #0
+   366  2d42 990130                 sta cache_timestamp,y
+   367  2d45 a9ff                   lda #$ff ; SFTODO: MAGIC NUMBER
+   368  2d47 99012e                 sta cache_id_low,y
+   369  2d4a 99012f                 sta cache_id_high,y
+   370  2d4d 8c002f                 sty free_block_index
+   371                          
+   372                              ; Set our_cache_ptr to point to the block's data.
+   373  2d50 20bc2d                 jsr set_our_cache_ptr_to_index_y
+   374                          
+   375                              ; Set the result to say we were able to provide the requested block.
+   376  2d53 a00b                   ldy #our_osword_result_offset
+   377  2d55 a900                   lda #0
+   378  2d57 91f0                   sta (osword_block_ptr),y
+   379                          
+   380                              ; Copy the 512-byte block in our cache pointed to by our_cache_ptr back to
+   381                              ; the caller.
+   382  2d59 208f2d                 jsr claim_tube
+   383  2d5c a902                   lda #2
+   384  2d5e 85f7                   sta count
+   385                          copy_requested_block_loop
+   386  2d60 209c2d                 jsr set_yx_to_tube_transfer_block
+   387  2d63 a907                   lda #tube_reason_256_byte_from_io
+   388  2d65 200604                 jsr tube_entry
+   389                              ; We don't need an initial delay with this reason code.
+   390  2d68 a000                   ldy #0
+   391                          tube_write_loop
+   392  2d6a b1f5                   lda (our_cache_ptr),y    ; 5 cycles (dummy, cache is page-aligned so not 6)
+   393  2d6c b1f5                   lda (our_cache_ptr),y    ; 5 cycles (dummy)
+   394  2d6e b1f5                   lda (our_cache_ptr),y    ; 5 cycles
+   395                          sta_abs_tube_data
+   396  2d70 8de5fe                 sta bbc_tube_data
+   397                              ; We now need a 10 microsecond/20 cycle delay; the instructions in the loop
+   398                              ; before the store to tube_data also form part of this delay.
+   399  2d73 c8                     iny                      ; 2 cycles
+   400  2d74 d0f4                   bne tube_write_loop      ; 3 cycles if we branch
+   401                              +assert_no_page_crossing tube_write_loop
+   402  2d76 20a82d                 jsr do_loop_tail_common
+   403  2d79 d0e5                   bne copy_requested_block_loop
+   404  2d7b 20972d                 jsr release_tube
+   405  2d7e 20b22d                 jsr reset_osword_block_data_offset
+   406                          
+   407                          our_osword_done
+   408                              ; We don't need to preserve A, X or Y. We just need to leave the same sideways
+   409                              ; ROM paged in as when we were entered.
+   410  2d81 68                     pla
+   411                              ; fall through to page_in_swr_bank_a
+   412                          page_in_swr_bank_a
+   413  2d82 85f4                   sta romsel_copy
+   414  2d84 8d30fe                 sta bbc_romsel
+   415  2d87 60                     rts
+   416                              ; Leave room for the larger Electron version of page_in_swr_bank_a to be copied
+   417                              ; over the BBC version.
+   418  2d88 00000000000000     !fill page_in_swr_bank_a_electron_size - (* - page_in_swr_bank_a)
+   419                          
+   420                          claim_tube
+   421  2d8f a9e5                   lda #tube_reason_claim + our_tube_reason_claim_id
+   422  2d91 200604                 jsr tube_entry
+   423  2d94 90f9                   bcc claim_tube
+   424  2d96 60                     rts
+   425                          
+   426                          release_tube
+   427  2d97 a9a5                   lda #tube_reason_release + our_tube_reason_claim_id
+   428  2d99 4c0604                 jmp tube_entry
+   429                          
+   430                          ; Set YX to point to the data block address within our OSWORD block.
+   431                          set_yx_to_tube_transfer_block
+   432  2d9c 18                     clc
+   433  2d9d a5f0                   lda osword_x
+   434  2d9f 6902                   adc #our_osword_data_offset
+   435  2da1 aa                     tax
+   436  2da2 a4f1                   ldy osword_y
+   437  2da4 9001                   bcc no_carry
+   438  2da6 c8                     iny
+   439                          no_carry
+   440  2da7 60                     rts
+   441                          
+   442                          do_loop_tail_common
+   443                              ; Bump the source and destination addresses by one page.
+   444  2da8 e6f6                   inc our_cache_ptr + 1
+   445  2daa a901                   lda #1
+   446  2dac 20b42d                 jsr adjust_osword_block_data_offset
+   447                             
+   448  2daf c6f7                   dec count ; must be last
+   449  2db1 60                     rts
+   450                          
+   451                          ; Undo the changes made to the high byte of the data address during a copy loop.
+   452                          reset_osword_block_data_offset
+   453  2db2 a9fe                   lda #(-2 and $ff)
+   454                              ; fall through to adjust_osword_block_data_offset
+   455                          
+   456                          ; Add A to the high byte of the data address in the OSWORD block.
+   457                          adjust_osword_block_data_offset
+   458  2db4 a003                   ldy #our_osword_data_offset + 1
+   459  2db6 18                     clc
+   460  2db7 71f0                   adc (osword_block_ptr),y
+   461  2db9 91f0                   sta (osword_block_ptr),y
+   462  2dbb 60                     rts
+   463                          
+   464                          ; Set our_cache_ptr to point to the block with index Y.
+   465                          set_our_cache_ptr_to_index_y
+   466  2dbc a900                   lda #0
+   467  2dbe 85f5                   sta our_cache_ptr
+   468  2dc0 98                     tya
+   469  2dc1 38                     sec
+   470  2dc2 ed002e                 sbc low_cache_entries
+   471  2dc5 b008                   bcs index_in_high_cache
+   472  2dc7 98                     tya
+   473  2dc8 0a                     asl
+   474  2dc9 18                     clc
+   475  2dca 6931                   adc #>low_cache_start
+   476  2dcc 85f6                   sta our_cache_ptr + 1
+   477  2dce 60                     rts
+   478                          index_in_high_cache
+   479                              ; A now contains the 512-byte block offset from the start of our first sideways RAM bank. Each 16K bank has 32 512-byte blocks, so we need to divide by 32=2^5 to get the bank index.
+   480  2dcf 48                     pha
+   481  2dd0 4a                     lsr
+   482  2dd1 4a                     lsr
+   483  2dd2 4a                     lsr
+   484  2dd3 4a                     lsr
+   485  2dd4 4a                     lsr
+   486  2dd5 a8                     tay
+   487  2dd6 b90509                 lda ram_bank_list,y
+   488  2dd9 20822d                 jsr page_in_swr_bank_a
+   489                              ; Now get the low 5 bits of the block offset, multiply by two to convert to
+   490                              ; 256 byte pages and that gives us the page offset within the bank.
+   491  2ddc 68                     pla
+   492  2ddd 291f                   and #31
+   493  2ddf 0a                     asl
+   494                              ; Carry is already clear
+   495  2de0 6980                   adc #$80
+   496  2de2 85f6                   sta our_cache_ptr + 1
+   497  2de4 60                     rts
+   498                          
+   499                              ; If this executable is re-loaded, old_userv will be overwritten by 0 as
+   500                              ; part of the re-load and things will break. In reality this isn't going to
+   501                              ; happen and I don't think there's any great solution to it. We can't easily
+   502                              ; put this just before the binary because the relocation likes to work on
+   503                              ; page boundaries, and since we have discardable init code at the end of the
+   504                              ; binary we can't put it there either.
+   505                          old_userv
+   506  2de5 0000                   !word 0
+   507                          
+   508                              ; Permanent code ends here; the following memory contains some one-off
+   509                              ; initialization code and some overlapping data allocations.
+   510                          code_end
+   511                          
+   512                          max_cache_entries = 255
+   513                          free_block_index_none = max_cache_entries ; real values are 0-(max_cache_entries - 1)
+   514                          
+   515                          cache_entries = * ; 1 byte
+   516                          
+   517                          ; We use cache_id_low - 1,y addressing in the hot find_cache_entry_by_id_loop,
+   518                          ; so it's good to have that page-aligned to avoid incurring an extra cycle
+   519                          ; penalty. The other tables are less critical, although cache_timestamp has a
+   520                          ; similar if not so hot use. Since max_cache_entries is 255 we can easily get
+   521                          ; the desired alignment by slotting some single-byte variables into the spare
+   522                          ; bytes at the start of each page without wasting any memory.
+   523                          !if ((cache_entries + 1) & $100) <> 0 {
+   524                              low_cache_entries = ((cache_entries + 1) & !$ff) + $100 ; 1 byte
+   525                          } else {
+   526                              low_cache_entries = cache_entries + 1 ; 1 byte
+   527                          }
+   528                          cache_id_low = low_cache_entries + 1 ; max_cache_entries bytes
+   529                          free_block_index = cache_id_low + max_cache_entries ; 1 byte
+   530                          cache_id_high = free_block_index + 1 ; max_cache_entries bytes
+   531                          current_tick = cache_id_high + max_cache_entries ; 1 byte
+   532                          cache_timestamp = current_tick + 1 ; max_cache_entries bytes
+   533                          low_cache_start = cache_timestamp + max_cache_entries
+   534                          !if low_cache_start & $ff <> 0 {
+   535                              !error "low_cache_start must be page-aligned"
+   536                          }
+   537                          
+   538                          initialize
+   539                              ; We claim iff we haven't already claimed USERV; this avoids crashes if
+   540                              ; we're executed twice, although this isn't expected to happen.
+   541  2de7 a903                   lda #<our_userv
+   542  2de9 a22c                   ldx #>our_userv
+   543                          !if 0 { ; This is pointless, as old_userv will be lost on a second execution.
+   544                              cmp userv
+   545                              bne initialize_needed
+   546                              cpx userv + 1
+   547                              beq initialize_done
+   548                          initialize_needed
+   549                          }
+   550                              ; Install ourselves on USERV, saving any previous claimant so we can forward
+   551                              ; calls we're not handling.
+   552  2deb ac0002                 ldy userv
+   553  2dee 8ce52d                 sty old_userv
+   554  2df1 ac0102                 ldy userv + 1
+   555  2df4 8ce62d                 sty old_userv + 1
+   556  2df7 8d0002                 sta userv
+   557  2dfa 8e0102                 stx userv + 1
+   558                          
+   559                              ; If we're running on an Electron, patch the code accordingly.
+   560  2dfd a900                   lda #osbyte_read_host
+   561  2dff a201                   ldx #1
+   562  2e01 20f4ff                 jsr osbyte
+   563  2e04 8a                     txa
+   564  2e05 d01b                   bne not_electron
+   565                          
+   566                              ; Patch the tube_data accesses.
+   567  2e07 a9e5                   lda #<electron_tube_data
+   568  2e09 8d012d                 sta lda_abs_tube_data + 1
+   569  2e0c 8d712d                 sta sta_abs_tube_data + 1
+   570  2e0f a9fc                   lda #>electron_tube_data
+   571  2e11 8d022d                 sta lda_abs_tube_data + 2
+   572  2e14 8d722d                 sta sta_abs_tube_data + 2
+   573                          
+   574                              ; Patch page_in_swr_bank_a
+   575  2e17 a20c                   ldx #page_in_swr_bank_a_electron_size - 1
+   576  2e19 bd232e             -   lda page_in_swr_bank_a_electron,x
+   577  2e1c 9d822d                 sta page_in_swr_bank_a,x
+   578  2e1f ca                     dex
+   579  2e20 10f7                   bpl -
+   580                          not_electron
+   581                          initialize_done
+   582  2e22 60                     rts
+   583                          
+   584                              ; This is copied over page_in_swr_bank_a, so must not contain absolute
+   585                              ; addresses within this executable.
+   586                          page_in_swr_bank_a_electron
+   587  2e23 a20c                   ldx #12
+   588  2e25 86f4                   stx romsel_copy
+   589  2e27 8e05fe                 stx electron_romsel
+   590  2e2a 85f4                   sta romsel_copy
+   591  2e2c 8d05fe                 sta electron_romsel
+   592  2e2f 60                     rts
+   593                          page_in_swr_bank_a_electron_end
+   594                          +assert page_in_swr_bank_a_electron_size = page_in_swr_bank_a_electron_end - page_in_swr_bank_a_electron
+   595                          
+   596                          relocate_target
+   597  2e30 00                     !byte 0
+   598                          relocate_setup
+   599  2e31 a983                   lda #osbyte_read_oshwm
+   600  2e33 20f4ff                 jsr osbyte
+   601  2e36 8c302e                 sty relocate_target
+   602                              ; This must be the last thing in the executable.
+
+; ******** Source: acorn-relocate.asm
+     1                          ; Code to relocate the Ozmoo executable down in memory. This is used on some
+     2                          ; Acorn builds to allow the executable to load high and then move itself down
+     3                          ; to an optimal address for the machine it's running on.
+     4                          ;
+     5                          ; The relocation model is very simple and relies on building two versions of the
+     6                          ; code starting at different page-aligned addresses, then comparing them to see
+     7                          ; which bytes need to be offset to compensate for the relocation at runtime.
+     8                          ; This works pretty well in practice, but it means that code can't vary in
+     9                          ; "complex" ways depending on where it's being assembled - e.g. it's OK to do
+    10                          ; "lda #>.story_start" but "lda #($80->.story-start)" will cause an error when
+    11                          ; generating the relocations as the two versions will differ but in an unexpected
+    12                          ; way.
+    13                          
+    14                          !zone {
+    15                          
+    16                          reloc_start = program_start
+    17                          !if <reloc_start != 0 {
+    18                              !error "reloc_start must be on a page boundary"
+    19                          }
+    20                          ; When relocating acorn-cache.asm on the host we will use these zero page
+    21                          ; locations. I can't find any official documentation to say what zero page we
+    22                          ; can and can't use, but looking at the different versions of the tube host code
+    23                          ; on mdfs.net I can't see any problem with transient use of these in practice.
+    24                          .delta = $70
+    25                          .codep = $71 ; 2 bytes
+    26                          .deltap = $73 ; 2 bytes
+    27                          .count = $75 ; 2 bytes
+    28                          .src = $77 ; 2 bytes
+    29                          .dst = $79 ; 2 bytes
+    30                          
+    31                          relocate
+    32                          !ifdef ACORN_RELOCATE_WITH_DOUBLE_PAGE_ALIGNMENT {
+    33                              lda relocate_target
+    34                              eor #>reloc_start
+    35                              lsr
+    36                              bcc +
+    37                              ; relocate_target doesn't have the same double-page alignment as reloc_start,
+    38                              ; so bump it up by one. It's harmless to modify relocate_target, because
+    39                              ; it just means if we're restarted by re-running the executable it will
+    40                              ; already have the right alignment.
+    41                              inc relocate_target
+    42                          +
+    43                          }
+    44                          
+    45  2e39 ad302e                 lda relocate_target
+    46  2e3c c92d                   cmp #(>reloc_start) + 1
+    47  2e3e 9010                   bcc +
+    48                              ; We don't support relocating upwards.
+    49  2e40 00                     brk
+    50  2e41 00                     !byte 0
+    51  2e42 5041474520746f6f...    !text "PAGE too high"
+    52  2e4f 00                     brk
+    53                          +
+    54                          
+    55  2e50 ad302e                 lda relocate_target
+    56  2e53 857a                   sta .dst + 1
+    57  2e55 38                     sec
+    58  2e56 e92c                   sbc #>reloc_start
+    59  2e58 8570                   sta .delta
+    60  2e5a a92c                   lda #>reloc_start
+    61  2e5c 8572                   sta .codep + 1
+    62  2e5e 8578                   sta .src + 1
+    63  2e60 a900                   lda #0
+    64  2e62 a8                     tay
+    65  2e63 8579                   sta .dst
+    66  2e65 8577                   sta .src
+    67  2e67 8571                   sta .codep
+    68  2e69 a9ce                   lda #<reloc_data
+    69  2e6b 8573                   sta .deltap
+    70  2e6d a92e                   lda #>reloc_data
+    71  2e6f 8574                   sta .deltap + 1
+    72  2e71 adcc2e                 lda reloc_count
+    73  2e74 8575                   sta .count
+    74  2e76 adcd2e                 lda reloc_count + 1
+    75  2e79 8576                   sta .count + 1
+    76  2e7b 0575                   ora .count
+    77  2e7d d003                   bne +
+    78                              ; There are no relocations, so just carry on without relocating.
+    79  2e7f 4ce72d                 jmp initialize
+    80                          +
+    81                          
+    82                              ; Fix up the absolute addresses in the executable in place.
+    83                              ; None of the following code can contain absolute addresses, otherwise it
+    84                              ; will be modified while it's executing and may crash. This is why we copy
+    85                              ; reloc_count down into zero page. (If we didn't generate relocations for
+    86                              ; this last bit of the executable we wouldn't have this issue, but it's
+    87                              ; easier for the build system not to have to work out where the "real"
+    88                              ; executable ends and the relocation code begins.)
+    89                          .patch_loop
+    90  2e82 b173                   lda (.deltap),y
+    91  2e84 f039                   beq .advance_255
+    92  2e86 18                     clc
+    93  2e87 6571                   adc .codep
+    94  2e89 8571                   sta .codep
+    95  2e8b 9002                   bcc +
+    96  2e8d e672                   inc .codep + 1
+    97  2e8f b171               +   lda (.codep),y
+    98  2e91 18                     clc
+    99  2e92 6570                   adc .delta
+   100  2e94 9171                   sta (.codep),y
+   101                          .patch_next
+   102  2e96 e673                   inc .deltap
+   103  2e98 d002                   bne +
+   104  2e9a e674                   inc .deltap + 1
+   105  2e9c a575               +   lda .count
+   106  2e9e d002                   bne +
+   107  2ea0 c676                   dec .count + 1
+   108  2ea2 c675               +   dec .count
+   109  2ea4 d0dc                   bne .patch_loop
+   110  2ea6 a576                   lda .count + 1
+   111  2ea8 d0d8                   bne .patch_loop
+   112                          
+   113                              ; Now copy the code down to relocate_target. We must not copy over the top of this
+   114                              ; code while it's executing, which is why it's right at the end and we're
+   115                              ; precise about how many bytes we copy. (We do round up to the nearest page,
+   116                              ; though.)
+   117                          .bytes_to_copy = relocate - program_start
+   118                              !if <.bytes_to_copy = 0 {
+   119                                  ldx #>.bytes_to_copy
+   120                              } else {
+   121  2eaa a203                       ldx #(>.bytes_to_copy) + 1
+   122                              }
+   123  2eac a000                   ldy #0
+   124                          .copy_loop
+   125  2eae b177                   lda (.src),y
+   126  2eb0 9179                   sta (.dst),y
+   127  2eb2 c8                     iny
+   128  2eb3 d0f9                   bne .copy_loop
+   129  2eb5 e678                   inc .src + 1
+   130  2eb7 e67a                   inc .dst + 1
+   131  2eb9 ca                     dex
+   132  2eba d0f2                   bne .copy_loop
+   133                          
+   134                              ; Now execute the relocated code; this absolute address will have been
+   135                              ; fixed up.
+   136  2ebc 4ce72d                 jmp initialize
+   137                          
+   138                          .advance_255
+   139  2ebf 18                     clc
+   140  2ec0 a571                   lda .codep
+   141  2ec2 69ff                   adc #255
+   142  2ec4 8571                   sta .codep
+   143  2ec6 9002                   bcc +
+   144  2ec8 e672                   inc .codep + 1
+   145  2eca d0ca               +   bne .patch_next ; Always branch
+   146                              
+   147                          
+   148                          
+   149                          
+   150                          ; The following must be right at the very end of the executable. A bit of
+   151                          ; padding is tolerable, though.
+   152                          reloc_count
+   153  2ecc 0000                   !word 0
+   154                          reloc_data
+   155                          }
+
+; ******** Source: acorn-cache.asm
+   603                          

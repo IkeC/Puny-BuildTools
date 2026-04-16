@@ -20,7 +20,7 @@ if [ -f ${STORY}_mega65.d81 ] ; then
 fi
 
 #create disk
-ruby ~/FictionTools/Templates/Interpreters/Ozmoo/make.rb -t:mega65 -dc:2:9 -ss1:"${LABEL}" -ss2:"Interactive Fiction" -ss3:"${SUBTITLE}" -sw:6 -dm:0 ${STORY}.z${ZVERSION}
+ruby /mnt/c/Source/ozmoo/make.rb -t:mega65 -ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
 #post-notification and cleanup
 if [ -f Resources/screen16.iff ] ; then

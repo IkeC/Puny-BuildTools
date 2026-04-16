@@ -33,7 +33,7 @@ fi
 #for BeebOzmoo, we need to switch to the Interpreters folder
 cp ${STORY}.z${ZVERSION} ~/FictionTools/Templates/Interpreters/beebOzmoo/
 cd ~/FictionTools/Templates/Interpreters/beebOzmoo
-python make-acorn.py -v ${LOADSCRFLAG}--title "${STORY}" --subtitle "${SUBTITLE}" --default-fg-colour 7 --default-bg-colour 0 --default-mode-7-status-colour 6 ${STORY}.z${ZVERSION}
+python -W ignore::SyntaxWarning make-acorn.py -v ${LOADSCRFLAG}--title "${STORY}" --subtitle "${SUBTITLE}" --default-fg-colour 7 --default-bg-colour 0 --default-mode-7-status-colour 6 ${STORY}.z${ZVERSION}
 rm ${STORY}.z${ZVERSION}
 
 #cleanup

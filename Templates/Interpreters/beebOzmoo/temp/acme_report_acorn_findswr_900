@@ -1,0 +1,372 @@
+
+; ******** Source: acorn-findswr.asm
+     1                          ; Acorn-specific code; this is a standalone utility to detect sideways RAM, not
+     2                          ; part of the Ozmoo binary itself. This is derived from Wouter Scholten's public
+     3                          ; domain swrtype-0.7. (http://wouter.bbcmicro.net/bbc/software-whs.html)
+     4                          
+
+; ******** Source: acorn-constants.asm
+     1                          ; Acorn constants shared by multiple Acorn executables; constants only relevant
+     2                          ; to the main Ozmoo executable are in constants.asm
+     3                          
+     4                          osbyte = $fff4
+     5                          osbyte_read_host = 0
+     6                          
+     7                          romsel_copy = $f4
+     8                          bbc_romsel = $fe30
+     9                          electron_romsel = $fe05
+    10                          
+    11                          ram_bank_count = $904
+    12                          ram_bank_list = $905
+    13                          
+    14                          ; SFTODO: MOVE THIS?
+    15                          !macro assert .b {
+    16                              !if .b = 0 {
+    17                                  !error "assertion failed"
+    18                              }
+    19                          }
+
+; ******** Source: acorn-findswr.asm
+     5                          
+     6                          
+     7                          copyright_offset = $8007
+     8                          test_location    = $8008 ; binary version number of ROM
+     9                          max_ram_bank_count = 9 ; 255*0.5K for VM plus 16K for dynamic memory
+    10                          
+    11                          ; We arrange for the output to be near the start of this binary so the loader
+    12                          ; can access it at fixed addresses.
+    13                          
+    14  0900 4c1409                 jmp start
+    15                          
+    16                          ; Output for Ozmoo
+    17  0903 00                 swr_type        !byte 0
+    18  0904 00                 ram_bank_count2 !byte 0
+    19  0905 0000000000000000...ram_bank_list2  !fill max_ram_bank_count
+    20                          
+    21                          +assert ram_bank_count = ram_bank_count2
+    22                          +assert ram_bank_list = ram_bank_list2
+    23                          
+    24                          ; Storage used by this routine which the loader doesn't care about
+    25                          swr_test   = $100 ; !fill $10
+    26                          swr_backup = $110 ; !fill $10
+    27  090e 00                 swr_banks       !byte 0
+    28  090f 00                 swr_byte_value1 !byte 0
+    29  0910 00                 swr_byte_value2 !byte 0
+    30  0911 00                 dummy           !byte 0
+    31  0912 00                 tmp             !byte 0
+    32  0913 00                 bbc             !byte 0
+    33                          
+    34                          start
+    35  0914 a900                   LDA #osbyte_read_host
+    36  0916 a201                   LDX #1
+    37  0918 20f4ff                 JSR osbyte
+    38  091b 8a                     TXA
+    39  091c f002                   BEQ +
+    40  091e a2ff                   LDX #$FF
+    41  0920 8e1309             +   STX bbc ; $FF for BBC, 0 for Electron
+    42                              
+    43  0923 78                     SEI
+    44                              ; save original contents
+    45  0924 a000                   LDY #0
+    46                          lp
+    47  0926 20e40a                 JSR page_in_y_corrupt_a
+    48  0929 ad0880                 LDA test_location
+    49  092c 991001                 STA swr_backup,Y
+    50  092f c8                     INY
+    51  0930 c010                   CPY #16
+    52  0932 90f2                   BCC lp
+    53                          
+    54  0934 a900                   LDA #0
+    55  0936 8d0e09                 STA swr_banks
+    56  0939 a9ff                   LDA #255
+    57  093b 8d0309                 STA swr_type
+    58                          
+    59                              ; now test which type
+    60                          
+    61  093e a000                   LDY #0
+    62  0940 a900                   LDA #0
+    63                          lp0
+    64  0942 990001                 STA swr_test,Y
+    65  0945 c8                     INY
+    66  0946 c010                   CPY #16
+    67  0948 90f8                   BCC lp0
+    68                          
+    69  094a a980                   LDA #$80
+    70  094c 8d0f09                 STA swr_byte_value1
+    71  094f a9e3                   LDA #$E3
+    72  0951 8d1009                 STA swr_byte_value2
+    73                          
+    74  0954 a000                   LDY #0
+    75                          bank_lp_y
+    76  0956 20c20a                 JSR set_all
+    77                              ; Skip banks with a valid ROM header; we check this instead of using the table
+    78                              ; at $2A1 so we don't use banks which contain valid ROM images temporarily
+    79                              ; disabled by a ROM manager.
+    80  0959 ae0780                 LDX copyright_offset
+    81  095c bd0080                 LDA $8000,X
+    82  095f d015                   BNE invalid_header
+    83  0961 bd0180                 LDA $8001,X
+    84  0964 c928                   CMP #'('
+    85  0966 d00e                   BNE invalid_header
+    86  0968 bd0280                 LDA $8002,X
+    87  096b c943                   CMP #'C'
+    88  096d d007                   BNE invalid_header
+    89  096f bd0380                 LDA $8003,X
+    90  0972 c929                   CMP #')'
+    91  0974 f052                   BEQ cmp_next_y
+    92                          invalid_header
+    93  0976 98                     TYA
+    94  0977 4d0f09                 EOR swr_byte_value1
+    95  097a 8d1209                 STA tmp
+    96  097d 8d0880                 STA test_location
+    97  0980 a20f                   LDX #15
+    98                          bank_lp_x
+    99  0982 a900                   LDA #0
+   100  0984 8d1109                 STA dummy
+   101  0987 20e00a                 JSR page_in_x_corrupt_a
+   102  098a ad0880                 LDA test_location
+   103  098d cd1209                 CMP tmp
+   104  0990 d026                   BNE cmp_next_x
+   105                              ; equality could be accidental (ROM or RAM bank had tested value
+   106                              ; already), so try a 2nd value.
+   107                              ; First restore romsel for write
+   108  0992 20a10a                 JSR set_romsel
+   109  0995 98                     TYA
+   110  0996 4d1009                 EOR swr_byte_value2
+   111  0999 8d1209                 STA tmp
+   112  099c 8d0880                 STA test_location
+   113                              ; write 0 to a dummy location. Goal is to change the databus value.
+   114                              ; Otherwise, in a fully decoded bank system, locations that do not
+   115                              ; have ROM or RAM, will not change the value on the address bus,
+   116                              ; at least for several cycles, so the old one stays...
+   117                              ; On my main BBC, this works with at least 2 NOPs
+   118                              ;     LDA #value STA test_location NOP NOP CMP test_location
+   119                              ; but here we need at least 3
+   120                              ;     LDA #value STA test_location NOP NOP NOP LDA test_location CMP #value
+   121                              ; Better explicity change the value to something else, as this may
+   122                              ; vary between CPUs/systems? (e.g. depending on load on the bus).
+   123  099f a900                   LDA #0
+   124  09a1 8d1109                 STA dummy
+   125                          
+   126  09a4 20e00a                 JSR page_in_x_corrupt_a
+   127  09a7 ad0880                 LDA test_location
+   128  09aa cd1209                 CMP tmp
+   129  09ad d009                   BNE cmp_next_x
+   130  09af ee0e09                 INC swr_banks
+   131  09b2 fe0001                 INC swr_test,X
+   132                              ; we don't know which method it is yet...
+   133  09b5 4cc809                 JMP cmp_next_y
+   134                          cmp_next_x
+   135                              ; restore the corrupted byte in swr (from the 2nd write!)
+   136  09b8 20a10a                 JSR set_romsel
+   137  09bb 98                     TYA
+   138  09bc 4d0f09                 EOR swr_byte_value1
+   139  09bf 8d1209                 STA tmp
+   140  09c2 8d0880                 STA test_location
+   141  09c5 ca                     DEX
+   142  09c6 10ba                   BPL bank_lp_x
+   143                          cmp_next_y
+   144  09c8 c8                     INY
+   145  09c9 c010                   CPY #16
+   146  09cb 9089                   BCC bank_lp_y
+   147  09cd ad0e09                 LDA swr_banks
+   148  09d0 d017                   BNE continue
+   149  09d2 8d0309                 STA swr_type ; no SWR found
+   150  09d5 4c710a                 JMP end2
+   151                          
+   152                          found_type_1
+   153  09d8 a901                   LDA #1
+   154  09da 8d0309                 STA swr_type
+   155  09dd 8d0e09                 STA swr_banks
+   156                              ; restore swr bank byte
+   157  09e0 b91001                 LDA swr_backup,Y
+   158  09e3 8d0880                 STA test_location
+   159  09e6 4c710a                 JMP end2
+   160                          
+   161                          continue ; type 1-6
+   162  09e9 a010                   LDY #16
+   163                          find_type_lp
+   164  09eb 88                     DEY
+   165                              ;BMI find_type_end ; no need, we only get here if there is RAM.
+   166  09ec b90001                 LDA swr_test,Y
+   167  09ef f0fa                   BEQ find_type_lp
+   168  09f1 c908                   CMP #8
+   169  09f3 b0e3                   BCS found_type_1 ;XXX CHANGE THIS
+   170  09f5 20920a                 JSR set_only_solidisk
+   171                              ; N.B. STY $FE30 should take care of the databus problem, as long as the
+   172                              ; value written to RAM is not in the set {0,...,15}.
+   173  09f8 98                     TYA
+   174  09f9 4d0f09                 EOR swr_byte_value1
+   175  09fc 4922                   EOR #$22
+   176  09fe 8d0880                 STA test_location
+   177  0a01 20da0a                 JSR page_in_y_preserve_a
+   178  0a04 cd0880                 CMP test_location
+   179  0a07 f040                   BEQ found_soli
+   180  0a09 20a50a                 JSR set_only_ramsel
+   181  0a0c 98                     TYA
+   182  0a0d 4d1009                 EOR swr_byte_value2
+   183  0a10 4923                   EOR #$23
+   184  0a12 8d0880                 STA test_location
+   185  0a15 20da0a                 JSR page_in_y_preserve_a
+   186  0a18 cd0880                 CMP test_location
+   187  0a1b f024                   BEQ found_ram_sel
+   188  0a1d 209e0a                 JSR set_only_romsel
+   189  0a20 98                     TYA
+   190  0a21 4d1009                 EOR swr_byte_value2
+   191  0a24 4934                   EOR #$34
+   192  0a26 8d0880                 STA test_location
+   193  0a29 20da0a                 JSR page_in_y_preserve_a
+   194  0a2c cd0880                 CMP test_location
+   195  0a2f f008                   BEQ found_rom_sel
+   196                              ; which leaves the watford rom/ram method
+   197                          
+   198                          found_watford_romram
+   199  0a31 a906                   LDA #6
+   200  0a33 8d0309                 STA swr_type
+   201  0a36 4c610a                 JMP end
+   202                          
+   203                          found_rom_sel
+   204  0a39 a902                   LDA #2
+   205  0a3b 8d0309                 STA swr_type
+   206  0a3e 4c610a                 JMP end
+   207                          
+   208                          found_ram_sel
+   209  0a41 a903                   LDA #3
+   210  0a43 8d0309                 STA swr_type
+   211  0a46 4c610a                 JMP end
+   212                          
+   213                          found_soli
+   214  0a49 a904                   LDA #4
+   215  0a4b 8d0309                 STA swr_type
+   216  0a4e b90001                 LDA swr_test,Y
+   217  0a51 c901                   CMP #1
+   218  0a53 d006                   BNE soli_3bits
+   219  0a55 ee0309                 INC swr_type
+   220  0a58 4c610a                 JMP end
+   221                          soli_3bits
+   222                              ; remove factor 2 from solidisk's incomplete address decoding
+   223  0a5b 4e0e09                 LSR swr_banks
+   224  0a5e 4c610a                 JMP end
+   225                          
+   226                          end
+   227                              ; restore swr, using method found
+   228  0a61 a000                   LDY #0
+   229                              ; note that we must write in low to high order for swr_type=4, or only
+   230                          
+   231                              ;   copy for Y=8-15 in that case.
+   232                          restore_lp
+   233  0a63 20c20a                 JSR set_all
+   234  0a66 b91001                 LDA swr_backup,Y
+   235  0a69 8d0880                 STA test_location
+   236  0a6c c8                     INY
+   237  0a6d c010                   CPY #16
+   238  0a6f 90f2                   BCC restore_lp
+   239                          end2
+   240  0a71 a5f4                   LDA $F4
+   241  0a73 20e50a                 JSR page_in_a
+   242  0a76 58                     CLI
+   243                              ; Now derive a list of banks which have usable sideways RAM.
+   244                              ; We don't trust swr_banks because ROM write through can make it misleading.
+   245  0a77 a200                   LDX #0
+   246  0a79 a000                   LDY #0
+   247                          derive_loop
+   248  0a7b b90001                 LDA swr_test,Y
+   249  0a7e f009                   BEQ not_usable
+   250  0a80 98                     TYA
+   251  0a81 9d0509                 STA ram_bank_list,X
+   252  0a84 e8                     INX
+   253  0a85 e009                   CPX #max_ram_bank_count
+   254  0a87 f005                   BEQ derive_done
+   255                          not_usable
+   256  0a89 c8                     INY
+   257  0a8a c010                   CPY #16
+   258  0a8c d0ed                   BNE derive_loop
+   259                          derive_done
+   260  0a8e 8e0409                 STX ram_bank_count
+   261  0a91 60                     RTS
+   262                          
+   263                          ; Utilities
+   264                          
+   265                          set_only_solidisk
+   266  0a92 20ce0a                 JSR set_all_to_wrong_bank
+   267                          set_solidisk ; for old solidisk swr
+   268  0a95 a20f                   LDX #$0F
+   269  0a97 8e62fe                 STX $FE62 ; user port -> output
+   270  0a9a 8c60fe                 STY $FE60 ; user port output=A
+   271  0a9d 60                     RTS
+   272                          
+   273                          set_only_romsel
+   274  0a9e 20ce0a                 JSR set_all_to_wrong_bank
+   275                          set_romsel
+   276  0aa1 20da0a                 JSR page_in_y_preserve_a
+   277  0aa4 60                     RTS
+   278                          
+   279                          ; RAMSEL may not exist, in which case it is equivalent to ROMSEL
+   280                          ; (incomplete address decoding), therefore this code
+   281                          
+   282                          set_only_ramsel
+   283  0aa5 20ce0a                 JSR set_all_to_wrong_bank
+   284  0aa8 20b70a                 JSR set_ramsel
+   285                              ; now set ROMSEL to the wrong bank, if ROMSEL=RAMSEL, RAMSEL will be deselected too.
+   286  0aab 98                     TYA
+   287  0aac 4901                   EOR #1
+   288  0aae a8                     TAY
+   289  0aaf 20a10a                 JSR set_romsel
+   290  0ab2 98                     TYA
+   291  0ab3 4901                   EOR #1
+   292  0ab5 a8                     TAY
+   293  0ab6 60                     RTS
+   294                          set_ramsel
+   295  0ab7 8c32fe                 STY $FE32
+   296  0aba 60                     RTS
+   297                          
+   298                          set_only_watford_romram
+   299  0abb 20ce0a                 JSR set_all_to_wrong_bank
+   300                          set_watford_romram
+   301  0abe 9930ff                 STA $FF30,Y
+   302  0ac1 60                     RTS ; write latch set by writing anything to location (FF30+n)
+   303                          
+   304                          set_all
+   305  0ac2 20950a                 JSR set_solidisk
+   306  0ac5 20a10a                 JSR set_romsel
+   307  0ac8 20b70a                 JSR set_ramsel
+   308  0acb 4cbe0a                 JMP set_watford_romram
+   309                          
+   310                          set_all_to_wrong_bank
+   311  0ace 98                     TYA
+   312  0acf 4901                   EOR #1
+   313  0ad1 a8                     TAY ; this is fine with solidisks incomplete address decoding (bit 3 not used)
+   314  0ad2 20c20a                 JSR set_all
+   315  0ad5 98                     TYA
+   316  0ad6 4901                   EOR #1
+   317  0ad8 a8                     TAY
+   318  0ad9 60                     RTS
+   319                          
+   320                          ; This paging is inefficient, but performance isn't really significant here;
+   321                          ; code readability and size are more important.
+   322                          page_in_y_preserve_a
+   323  0ada 48                     PHA
+   324  0adb 20e40a                 JSR page_in_y_corrupt_a
+   325  0ade 68                     PLA
+   326  0adf 60                     RTS
+   327                          page_in_x_corrupt_a
+   328  0ae0 8a                     TXA
+   329  0ae1 4ce50a                 JMP page_in_a
+   330                          page_in_y_corrupt_a
+   331  0ae4 98                     TYA
+   332                          page_in_a
+   333  0ae5 2c1309                 BIT bbc
+   334  0ae8 1004                   BPL page_in_a_electron
+   335  0aea 8d30fe                 STA $FE30
+   336  0aed 60                     RTS
+   337                          page_in_a_electron
+   338  0aee 48                     PHA
+   339  0aef a90c                   LDA #12
+   340  0af1 8d05fe                 STA $FE05
+   341  0af4 68                     PLA
+   342  0af5 8d05fe                 STA $FE05
+   343  0af8 60                     RTS
+   344                          
+   345                          !if * >= $b00 {
+   346                              !error "findswr has overflowed available memory"
+   347                          }
