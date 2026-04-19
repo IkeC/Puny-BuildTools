@@ -23,24 +23,24 @@ fi
 #copy resources
 zvalue="$ZVERSION"
 if [[ $zvalue == 5 ]] ; then
-    cp ~/FictionTools/Templates/Interpreters/DOS_I_Z5.EXE ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOS_I_Z5.EXE /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
 fi
 if [[ $zvalue == 3 ]] ; then
-    cp ~/FictionTools/Templates/Interpreters/DOS_I_Z5.EXE ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOS_I_Z5.EXE /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
 fi
 
 #place story in temporary directory
-mv STORY.DAT ~/FictionTools/Templates/Interpreters/DOSTEMP
+mv STORY.DAT /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP
 
 #copy content to Release directory
-cp -r ~/FictionTools/Templates/Interpreters/DOSTEMP Releases/DOS
+cp -r /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP Releases/DOS
 
 #post-cleanup
-if [ -f ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.EXE ] ; then
-    rm ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
+if [ -f /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.EXE ] ; then
+    rm /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.EXE
 fi
-if [ -f ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.COM ] ; then
-    rm ~/FictionTools/Templates/Interpreters/DOSTEMP/MOONM.COM
+if [ -f /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.COM ] ; then
+    rm /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DOSTEMP/MOONM.COM
 fi
 
 #check for loading screen and arrange resources

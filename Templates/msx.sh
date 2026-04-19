@@ -24,7 +24,7 @@ cp ${STORY}.z${ZVERSION} STORY.DAT
 
 # build disc with or without loading screen
 if ! [ -f Resources/LPIC.SC2 ] ; then
-    cp ~/FictionTools/Templates/Interpreters/MSXNOPIC.DSK .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/MSXNOPIC.DSK .
     mv MSXNOPIC.DSK ${STORY}_MSX.dsk
     dsktool a ${STORY}_MSX.dsk STORY.DAT
     echo -e "\nNo LPIC.SC2 found in /Resources dir."
@@ -32,7 +32,7 @@ if ! [ -f Resources/LPIC.SC2 ] ; then
     rm STORY.DAT
     exit 0
 else
-    cp ~/FictionTools/Templates/Interpreters/MSXTERP.DSK .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/MSXTERP.DSK .
     cp Resources/LPIC.SC2 .
     mv MSXTERP.DSK ${STORY}_MSX.dsk
     dsktool a ${STORY}_MSX.dsk LPIC.SC2 STORY.DAT

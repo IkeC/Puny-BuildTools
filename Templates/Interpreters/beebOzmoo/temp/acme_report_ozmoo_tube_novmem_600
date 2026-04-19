@@ -8280,7 +8280,7 @@
    905  187b 0000                   !word 0 ; exec address high
    906  187d f32d                   !word stack_start - zp_bytes_to_save ; start address low
    907  187f 0000                   !word 0 ; start address high
-   908  1881 a84e                   !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
+   908  1881 da4e                   !word story_start + ACORN_DYNAMIC_SIZE_BYTES ; end address low
    909  1883 0000                   !word 0 ; end address high
    910                          .osfile_save_load_block_master_end
    911                          .osfile_save_load_block_length = .osfile_save_load_block_master_end - .osfile_save_load_block_master

@@ -20,7 +20,7 @@ if [ -f ${STORY}_sam_coupe.cpm ] ; then
 fi
 
 #copy resources
-cp ~/FictionTools/Templates/Interpreters/SAM_Vezza.cpm ./
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/SAM_Vezza.cpm ./
 mv SAM_Vezza.cpm ${STORY}_sam_coupe.cpm
 
 #prepare story 

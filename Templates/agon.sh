@@ -22,10 +22,10 @@ fi
 
 #copy resources
 #place story in temporary directory
-mv STORY.DAT ~/FictionTools/Templates/Interpreters/Agontemp
+mv STORY.DAT /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Agontemp
 
 #copy content to Release directory
-cp -r ~/FictionTools/Templates/Interpreters/Agontemp Releases/Agon
+cp -r /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Agontemp Releases/Agon
 
 #check for loading screen and arrange resources
 if ! [ -f Resources/SCREEN.SCR ] ; then

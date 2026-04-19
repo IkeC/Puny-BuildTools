@@ -34,10 +34,10 @@ If you work on `MacOS`, I can't recommend [OrbStack](https://orbstack.dev/) enou
 
 Below instructions are intended for `Debian 12 "Bookworm"` (or later). Generally, the recommended system for the Puny BuildTools is `Debian` itself as it offers the most stability. As already stated, `Debian` derivates like `Ubuntu` or `Linux Mint `should be fine but remain untested.
 
-Open a Bash terminal. In your home directory, create a folder named `FictionTools` with 
+Open a Bash terminal. Clone the repository directly into `/mnt/c/Source/Puny-BuildTools` with 
 
 ```
-mkdir ~/FictionTools
+git clone https://github.com/ByteProject/Puny-BuildTools.git /mnt/c/Source/Puny-BuildTools
 ```
 
 The Puny BuildTools require some dependencies. Install these via a single command: 
@@ -49,13 +49,13 @@ sudo apt update && sudo apt install frotz cpmtools dosfstools mtools git ruby im
 When prompted to install additional dependencies, type `Y` to confirm. Switch to the folder you created and use Git to load the newest version from GitHub:
 
 ```
-cd ~/FictionTools && git clone https://github.com/ByteProject/Puny-BuildTools.git .
+cd /mnt/c/Source/Puny-BuildTools && git clone https://github.com/ByteProject/Puny-BuildTools.git .
 ```
 
 Let's use `Puny-Wan Kenobi` to check if the Puny BuildTools have sufficient permissions to run on your system by typing:
 
 ```
-cd ~/FictionTools && ./kenobi -c
+cd /mnt/c/Source/Puny-BuildTools && ./kenobi -c
 ```
 
 This usually is the case since Git keeps track of the executable bit of a file. If so, you can skip the troubleshooting part below.
@@ -63,7 +63,7 @@ This usually is the case since Git keeps track of the executable bit of a file. 
 > **Permissions Troubleshooting**: Should Bash tell you that you don't have sufficient permissions to run `kenobi`, or should `kenobi` itself report errors for some of the components and modules, you can use it to fix these. Again, only do the command below if you got errors reported or cannot run kenobi: 
 
 ```
-cd ~/FictionTools && chmod 755 kenobi && ./kenobi -p
+cd /mnt/c/Source/Puny-BuildTools && chmod 755 kenobi && ./kenobi -p
 ```
 
 > This may take some time. Should you ever need to fix permissions again, simply run `kenobi -p`.
@@ -77,21 +77,21 @@ nano ~/.bashrc
 In case you're on `Linux` add this entry:
 
 ```
-source ~/FictionTools/.punyrc
+source /mnt/c/Source/Puny-BuildTools/.punyrc
 ```
 
 For `MacOS`, make sure the entry looks like this:
 
 ```
-source ~/FictionTools/.punyrc
-source ~/FictionTools/.punyorb
+source /mnt/c/Source/Puny-BuildTools/.punyrc
+source /mnt/c/Source/Puny-BuildTools/.punyorb
 ```
 
 In case you're on `Windows / WSL2`, the entry needs to look like this instead:
 
 ```
-source ~/FictionTools/.punyrc
-source ~/FictionTools/.punywsl
+source /mnt/c/Source/Puny-BuildTools/.punyrc
+source /mnt/c/Source/Puny-BuildTools/.punywsl
 ```
 
 After you've made your changes, hit `CTRL X` to exit Nano. Make sure you select `Y` when you're asked to save the modified buffer.
@@ -142,7 +142,7 @@ One final step remains: providing the Puny BuildTools with the path to your Puny
 Type below command and enter the path to your PunyInform installation, then save.
 
 ```
-nano ~/FictionTools/.pi6rc
+nano /mnt/c/Source/Puny-BuildTools/.pi6rc
 ```
 
 Congratulations! You've completed the setup.
@@ -365,7 +365,7 @@ makescr.sh is a ZX Spectrum screen maker. Please refer to the `pixel_guide.txt` 
 By default, the folder `punycustom` does not exist. However, if you find the feature useful, you may create it via 
 
 ```
-mkdir ~/FictionTools/punycustom
+mkdir /mnt/c/Source/Puny-BuildTools/punycustom
 ```
 
 So what does it do? Let's assume for a moment that you want to replace a PunyInform library file. Not just a few routines but the whole file. That's what it is for. Every file you place in `punycustom` that has the same name as a PunyInform library file, is used upon compilation instead. The most common scenario would be replacing the library's standard messages found in `messages.h` with your own implementation. Another common scenario would be replacing one of the PunyInform library extensions with a customized version.

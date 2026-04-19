@@ -23,7 +23,7 @@ if [ -f ${STORY}_c128.d64 ] ; then
 fi
 
 #compile
-ruby /mnt/c/Source/ozmoo/make.rb -t:c128 -ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
+ruby /mnt/c/Source/ozmoo/make.rb -ch -t:c128 -ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
 mv c128_${STORY}.d71 ${STORY}_c128.d71
 

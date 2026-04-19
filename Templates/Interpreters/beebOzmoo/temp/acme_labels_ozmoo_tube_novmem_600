@@ -125,7 +125,7 @@
 	stack	= $100
 	select_lower_window	= $23ca
 	turn_off_cursor	= $25d7	; ?
-	ACORN_DYNAMIC_SIZE_BYTES	= $1ca8
+	ACORN_DYNAMIC_SIZE_BYTES	= $1cda
 	s_screenrowcolumn_from_cursor	= $1013
 	z_get_variable_reference	= $1b06
 	end_of_routines	= $300f	; unused

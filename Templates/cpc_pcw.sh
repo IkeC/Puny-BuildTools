@@ -20,7 +20,7 @@ if [ -f ${STORY}_cpc_pcw.dsk ] ; then
 fi
 
 #copy resources
-cp ~/FictionTools/Templates/Interpreters/cpc_vezza.dsk .
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/cpc_vezza.dsk .
 mv cpc_vezza.dsk ${STORY}.dsk
 
 #prepare story 
@@ -36,9 +36,9 @@ if ! [ -f Resources/SCREEN.SCR ] ; then
     echo -e "CPC/PCW disc without loading screen successfully built.\n"
     rm STORY.DAT
 else
-    cp ~/FictionTools/Templates/Interpreters/DISC.BAS .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/DISC.BAS .
     idsk ${STORY}.dsk -i DISC.BAS
-    cp ~/FictionTools/Templates/Interpreters/GAME.BAS .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/GAME.BAS .
     idsk ${STORY}.dsk -i GAME.BAS
     cp ./Resources/SCREEN.SCR .
     idsk ${STORY}.dsk -i SCREEN.SCR #-t 1 -c c000

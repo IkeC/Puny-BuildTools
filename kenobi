@@ -7,8 +7,8 @@
 echo "Puny-Wan Kenobi 1.3 - the update is strong with this one"
 echo -e "Puny BuildTools, (c) 2025 Stefan Vogt\n"
 
-if ! [ -d ~/FictionTools ]; then
-    echo -e "'FictionTools' folder not found in home directory. Aborting program.\n"
+if ! [ -d /mnt/c/Source/Puny-BuildTools ]; then
+    echo -e "'/mnt/c/Source/Puny-BuildTools' folder not found. Aborting program.\n"
     exit 1
 fi
 
@@ -18,7 +18,7 @@ do
 		u)  # update
             echo -e "initiating Puny BuildTools update [...]\n"
             workingDir=$(pwd)
-            cd ~/FictionTools
+            cd /mnt/c/Source/Puny-BuildTools
             git pull
             cd "${workingDir}"
             echo
@@ -28,7 +28,7 @@ do
 		c)  # check permissions
             echo -e "checking component permissions [...]\n"
             workingDir=$(pwd)
-            cd ~/FictionTools
+            cd /mnt/c/Source/Puny-BuildTools
             printf "puny CLI ->     "
             [ -x puny ] && printf "okay... executable bit is set\n" || printf "error... not executable\n"
             printf "pi6 ->          "
@@ -61,7 +61,7 @@ do
 		p)  # set permissions
             echo -e "setting permissions may take a while [...]\n"
             workingDir=$(pwd)
-            cd ~/FictionTools
+            cd /mnt/c/Source/Puny-BuildTools
             echo "-> applying permissions to directories..."
             find . -type d -exec chmod 0755 {} \;
             echo "-> applying permissions to binaries and scripts..."

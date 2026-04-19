@@ -33,21 +33,21 @@ cp ${STORY}.z${ZVERSION} Story.Data
 zvalue="$ZVERSION"
 if [[ $zvalue == 5 && $buildWithLoader == true ]] ; then
     echo "Configuring Z5 .ADF template with loader."
-    cp ~/FictionTools/Templates/Interpreters/amiga_Infocom_z5_pic.adf ./
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/amiga_Infocom_z5_pic.adf ./
     mv amiga_Infocom_z5_pic.adf ${STORY}_amiga.adf
     cp Resources/loader ./
 elif [[ $zvalue == 5 && $buildWithLoader == false ]] ; then
     echo "Configuring Z5 .ADF template without loader."
-    cp ~/FictionTools/Templates/Interpreters/amiga_Infocom_z5.adf ./
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/amiga_Infocom_z5.adf ./
     mv amiga_Infocom_z5.adf ${STORY}_amiga.adf
 elif [[ $zvalue == 3 && $buildWithLoader == true ]] ; then
     echo "Configuring Z3 .ADF template with loader."
-    cp ~/FictionTools/Templates/Interpreters/amiga_ZIP_pic.adf ./
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/amiga_ZIP_pic.adf ./
     mv amiga_ZIP_pic.adf ${STORY}_amiga.adf
     cp Resources/loader ./
 elif [[ $zvalue == 3 && $buildWithLoader == false ]] ; then
     echo "Configuring Z3 .ADF template without loader."
-    cp ~/FictionTools/Templates/Interpreters/amiga_ZIP.adf ./
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/amiga_ZIP.adf ./
     mv amiga_ZIP.adf ${STORY}_amiga.adf
 fi
 

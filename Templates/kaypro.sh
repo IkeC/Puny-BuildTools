@@ -29,7 +29,7 @@ fi
 cp ${STORY}.z${ZVERSION} game.dat
 
 #copy resources
-cp ~/FictionTools/Templates/Interpreters/kaypro.cpm ./
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/kaypro.cpm ./
 mv kaypro.cpm ${STORY}_kaypro.cpm
 
 #place story on disk image

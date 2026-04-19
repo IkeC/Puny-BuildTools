@@ -20,14 +20,14 @@ if [ -f ${STORY}_mega65.d81 ] ; then
 fi
 
 #create disk
-ruby /mnt/c/Source/ozmoo/make.rb -t:mega65 -ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
+ruby /mnt/c/Source/ozmoo/make.rb -ch -t:mega65 -ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
 #post-notification and cleanup
 if [ -f Resources/screen16.iff ] ; then
     cp Resources/screen16.iff .
     c1541 -attach "mega65_${STORY}.d81" -read autoboot.c65
     mv autoboot.c65 ozmoo
-    cp ~/FictionTools/Templates/Interpreters/autoboot.c65.16 .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/autoboot.c65.16 .
     mv autoboot.c65.16 autoboot.c65
     c1541 -attach "mega65_${STORY}.d81" -read zcode,s
     c1541 -format "moonmist,if" D81 "${STORY}_mega65.d81" 8
@@ -46,7 +46,7 @@ elif [ -f Resources/screen256.iff ] ; then
     cp Resources/screen256.iff .
     c1541 -attach "mega65_${STORY}.d81" -read autoboot.c65
     mv autoboot.c65 ozmoo
-    cp ~/FictionTools/Templates/Interpreters/autoboot.c65.256 .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/autoboot.c65.256 .
     mv autoboot.c65.256 autoboot.c65
     c1541 -attach "mega65_${STORY}.d81" -read zcode,s
     c1541 -format "moonmist,if" D81 "${STORY}_mega65.d81" 8

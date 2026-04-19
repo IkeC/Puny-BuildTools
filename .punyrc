@@ -5,10 +5,10 @@ export WINEDEBUG=-all
 export WINEARCH=win32
 
 # Puny BuildTools directories added at path
-export PATH="$HOME/FictionTools:$PATH"
-export PATH="$HOME/FictionTools/hfsutils:$PATH"
-export PATH="$HOME/FictionTools/z88dk/bin:$PATH"
-export PATH="$HOME/FictionTools/z88dk/lib:$PATH"
+export PATH="/mnt/c/Source/Puny-BuildTools:$PATH"
+export PATH="/mnt/c/Source/Puny-BuildTools/hfsutils:$PATH"
+export PATH="/mnt/c/Source/Puny-BuildTools/z88dk/bin:$PATH"
+export PATH="/mnt/c/Source/Puny-BuildTools/z88dk/lib:$PATH"
 export PATH="/sbin:$PATH"
-export ZCCCFG="$HOME/FictionTools/z88dk/lib/config"
+export ZCCCFG="/mnt/c/Source/Puny-BuildTools/z88dk/lib/config"
 export PATH="$PATH:~/.local/bin"

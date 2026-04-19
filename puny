@@ -8,7 +8,7 @@ if [ -f config.sh ] ; then
 fi
 
 #get short git version hash
-gitversion=$(git -C ~/FictionTools rev-parse --short HEAD)
+gitversion=$(git -C /mnt/c/Source/Puny-BuildTools rev-parse --short HEAD)
 
 do_compile()
 {
@@ -48,7 +48,7 @@ while getopts ':iectb:haosv' opt; do
       fi
       echo "-> writing 'config.sh' file"
       echo "-> writing 'Resources' directory"
-      cp -r ~/FictionTools/Templates/Resources .
+      cp -r /mnt/c/Source/Puny-BuildTools/Templates/Resources .
       mv Resources/config.sh .
       echo "-> writing 'bundle.sh' and 'all.sh' scripts"
       mv Resources/bundle.sh .
@@ -61,7 +61,7 @@ while getopts ':iectb:haosv' opt; do
 
     a) # create optimized abbrevations > abbrvs.h
       echo -e "writing abbreviations to abbrvs.h [...]\n"
-      ~/FictionTools/make_abbrvs.sh
+      /mnt/c/Source/Puny-BuildTools/make_abbrvs.sh
       echo
       exit 0
       ;;
@@ -104,13 +104,13 @@ while getopts ':iectb:haosv' opt; do
       fi
 
       target="$OPTARG" 
-      if ! [ -f ~/FictionTools/Templates/${target}.sh ] ; then
+      if ! [ -f /mnt/c/Source/Puny-BuildTools/Templates/${target}.sh ] ; then
         echo -e "'${target}' is not a valid target. Operation aborted.\n"
         exit 1
       fi
       
       echo -e "Processing target '${target}', Z-machine version ${zvalue}"
-      ~/FictionTools/Templates/${target}.sh
+      /mnt/c/Source/Puny-BuildTools/Templates/${target}.sh
       ;;
 
     h) # help menu

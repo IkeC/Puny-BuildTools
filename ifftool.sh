@@ -40,7 +40,7 @@ do
             fi
             convert ${OPTARG} -resize 320x256\! -colors 32 -depth 8 amigascr.ppm
             ppmtoilbm -maxplanes 8 amigascr.ppm >amigascr.iff
-            vamos ~/FictionTools/s-pic amigascr.iff loader
+            vamos /mnt/c/Source/Puny-BuildTools/s-pic amigascr.iff loader
             rm amigascr.ppm
             rm amigascr.iff
             if [ -f loader ] ; then

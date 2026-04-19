@@ -17,15 +17,15 @@ fi
 z3_hack_infocom()
 {
     echo -e "applying Infocom interpreter hack [...]"
-    interlz3 ~/FictionTools/Templates/Interpreters/info3k.bin ${STORY}.z3 ${STORY}_apple2.dsk
+    interlz3 /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/info3k.bin ${STORY}.z3 ${STORY}_apple2.dsk
     echo -e "Apple II disk with Infocom interpreter successfully built.\n"
 }
 
 default_build()
 {
     #copy resources
-    cp ~/FictionTools/Templates/Interpreters/apple2_boot.dsk .
-    cp ~/FictionTools/Templates/Interpreters/apple2_template.dsk .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/apple2_boot.dsk .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/apple2_template.dsk .
 
     #add files to disk
     cpmcp -f apple-do apple2_template.dsk ${STORY}.z${ZVERSION} 0:story.dat

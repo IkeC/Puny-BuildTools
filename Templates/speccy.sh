@@ -24,7 +24,7 @@ cp ${STORY}.z${ZVERSION} STORY.DAT
 
 # build disc with or without loading screen
 if ! [ -f Resources/SCRLOAD.COM ] ; then
-    cp ~/FictionTools/Templates/Interpreters/Spec_Vezza.dsk .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Spec_Vezza.dsk .
     mv Spec_Vezza.dsk ${STORY}_speccy.dsk
     idsk ${STORY}_speccy.dsk -i STORY.DAT -t 0
     echo -e "\nNo SCRLOAD.COM found in /Resources dir."
@@ -32,7 +32,7 @@ if ! [ -f Resources/SCRLOAD.COM ] ; then
     rm STORY.DAT
     exit 0
 else
-    cp ~/FictionTools/Templates/Interpreters/Spec_Vezza_SCR.dsk .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Spec_Vezza_SCR.dsk .
     cp Resources/SCRLOAD.COM .
     mv Spec_Vezza_SCR.dsk ${STORY}_speccy.dsk
     idsk ${STORY}_speccy.dsk -i STORY.DAT -t 0

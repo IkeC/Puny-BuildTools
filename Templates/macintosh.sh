@@ -20,7 +20,7 @@ if [ -f ${STORY}_mac.dsk ] ; then
 fi
 
 #copy resources
-cp ~/FictionTools/Templates/Interpreters/ClassicMac_MaxZip.dsk ./
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/ClassicMac_MaxZip.dsk ./
 mv ClassicMac_MaxZip.dsk ${STORY}_mac.dsk
 
 #prepare story 

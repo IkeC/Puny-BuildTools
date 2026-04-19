@@ -27,12 +27,12 @@ LOADSCRFLAG="--splash-image screen.bbc --splash-mode 2 "
 if ! [ -f Resources/screen.bbc ] ; then
     LOADSCRFLAG=""
 else
-    cp Resources/screen.bbc ~/FictionTools/Templates/Interpreters/beebOzmoo
+    cp Resources/screen.bbc /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/beebOzmoo
 fi
 
 #for BeebOzmoo, we need to switch to the Interpreters folder
-cp ${STORY}.z${ZVERSION} ~/FictionTools/Templates/Interpreters/beebOzmoo/
-cd ~/FictionTools/Templates/Interpreters/beebOzmoo
+cp ${STORY}.z${ZVERSION} /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/beebOzmoo/
+cd /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/beebOzmoo
 python -W ignore::SyntaxWarning make-acorn.py -v ${LOADSCRFLAG}--title "${STORY}" --subtitle "${SUBTITLE}" --default-fg-colour 7 --default-bg-colour 0 --default-mode-7-status-colour 6 ${STORY}.z${ZVERSION}
 rm ${STORY}.z${ZVERSION}
 
@@ -45,7 +45,7 @@ cd "${workingDir}"
 if ! [ -f Resources/screen.bbc ] ; then
     echo -e "\nNo screen.bbc found in /Resources dir. Building disk without loading screen."
 else
-    rm ~/FictionTools/Templates/Interpreters/beebOzmoo/screen.bbc
+    rm /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/beebOzmoo/screen.bbc
     echo -e "\nscreen.bbc found in /Resources dir. Building disk with loading screen."
 fi
 

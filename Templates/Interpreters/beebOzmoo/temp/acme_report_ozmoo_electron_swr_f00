@@ -8334,7 +8334,7 @@
    959  2268 8577                   sta .start_ptr
    960  226a a980                   lda #>story_start
    961  226c 8578                   sta .start_ptr + 1
-   962  226e a9a8                   lda #<ACORN_DYNAMIC_SIZE_BYTES
+   962  226e a9da                   lda #<ACORN_DYNAMIC_SIZE_BYTES
    963  2270 8d2804                 sta .osgbpb_save_length
    964  2273 a91c                   lda #>ACORN_DYNAMIC_SIZE_BYTES
    965  2275 8d2904                 sta .osgbpb_save_length + 1

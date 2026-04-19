@@ -28,7 +28,7 @@ else
 fi
 
 #compile
-ruby /mnt/c/Source/ozmoo/make.rb -t:plus4 ${LOADSCRFLAG}-ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
+ruby /mnt/c/Source/ozmoo/make.rb -ch -t:plus4 ${LOADSCRFLAG}-ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
 mv plus4_${STORY}.d64 ${STORY}_plus4.d64
 

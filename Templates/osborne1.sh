@@ -26,7 +26,7 @@ if [ -f ${STORY}_osborne1.cpm ] ; then
 fi
 
 #copy resources
-cp ~/FictionTools/Templates/Interpreters/osborne1.cpm ./
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/osborne1.cpm ./
 mv osborne1.cpm ${STORY}_osborne1.cpm
 
 #prepare story 

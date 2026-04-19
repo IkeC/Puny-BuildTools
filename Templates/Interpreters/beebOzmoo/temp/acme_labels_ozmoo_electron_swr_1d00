@@ -138,7 +138,7 @@
 	select_lower_window	= $3d70
 	turn_off_cursor	= $3f7d	; ?
 	close_osgbpb_block_handle	= $3135	; ?
-	ACORN_DYNAMIC_SIZE_BYTES	= $1ca8
+	ACORN_DYNAMIC_SIZE_BYTES	= $1cda
 	ACORN_WANT_OSGBPB_BLOCK	= $1
 	ALLRAM	= $1
 	s_screenrowcolumn_from_cursor	= $2727

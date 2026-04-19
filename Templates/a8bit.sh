@@ -23,7 +23,7 @@ suffix=_atari8bit
 
 zmachine3()
 {
-    a8bin=~/FictionTools/atari8bit/a8.bin # Infocom's early terp, 130kb disk image, 40 columns
+    a8bin=/mnt/c/Source/Puny-BuildTools/atari8bit/a8.bin # Infocom's early terp, 130kb disk image, 40 columns
     printf "Interpreter: Infocom early single-disk [ZIP]\n"
     printf "Columns: 40\n"
     printf "Memory: min. 48kb\n"
@@ -39,7 +39,7 @@ zmachine3()
 
 zmachine5()
 {
-    a8bin=~/FictionTools/atari8bit/new8_40_dd_z5.bin # Jindroush's terp, 180kb disk image, 40 columns
+    a8bin=/mnt/c/Source/Puny-BuildTools/atari8bit/new8_40_dd_z5.bin # Jindroush's terp, 180kb disk image, 40 columns
     printf "Interpreter: Jindroush/Infocom version H [XZIP]\n"
     printf "Columns: 40\n"
     printf "Memory: min. 128kb of extended memory\n"

@@ -23,14 +23,14 @@ fi
 cp ${STORY}.z${ZVERSION} STORY.DAT
 
 #copy disk template with interpreter
-cp ~/FictionTools/Templates/Interpreters/TRS80_M4.dsk .
+cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/TRS80_M4.dsk .
 
 #write story file on TRS-80 Model 3 (LDOS) disk image
 mv TRS80_M4.dsk ${STORY}_trs80_m4.dsk
-#wine ~/FictionTools/trswrite.exe -o ${STORY}_trs80_m4.dsk STORY.DAT
+#wine /mnt/c/Source/Puny-BuildTools/trswrite.exe -o ${STORY}_trs80_m4.dsk STORY.DAT
 trspunytool -x -s -i -ss -td4 -w ${STORY}_trs80_m4.dsk STORY.DAT
 printf "\n" # only cosmetic
-trspunytool -x -s -i -ss -td4 -w ${STORY}_trs80_m4.dsk ~/FictionTools/Templates/Interpreters/M4ZVM64.CMD 
+trspunytool -x -s -i -ss -td4 -w ${STORY}_trs80_m4.dsk /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/M4ZVM64.CMD 
 printf "\n" # only cosmetic
 trs80-tool dir ${STORY}_trs80_m4.dsk
 

@@ -29,7 +29,7 @@ else
 fi
 
 #compile
-#ruby ~/FictionTools/Templates/Interpreters/Ozmoo/make.rb -t:c64 ${LOADSCRFLAG}-dc:2:9 -ss1:"${LABEL}" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -dm:0 ${STORY}.z${ZVERSION}
+#ruby /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Ozmoo/make.rb -t:c64 ${LOADSCRFLAG}-dc:2:9 -ss1:"${LABEL}" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -dm:0 ${STORY}.z${ZVERSION}
 ruby /mnt/c/Source/ozmoo/make.rb -ch -t:c64 ${LOADSCRFLAG}-ss1:"Dust" -ss2:"A Western by IkeC" -ss3:"${SUBTITLE}" -sw:6 -bgcol:black -fgcol:white -dmbgcol:white -dmfgcol:black -dm:1 ${STORY}.z${ZVERSION}
 
 if [ -f c64_${STORY}.d64 ] ; then

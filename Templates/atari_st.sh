@@ -33,9 +33,9 @@ cp ${STORY}.z${ZVERSION} STORY.DAT
 zvalue="$ZVERSION"
 if [[ $zvalue == 5 && $buildWithLoader == true ]] ; then
     echo "Configuring Z5 .ST template with pixel art viewer."
-    cp ~/FictionTools/Templates/Interpreters/ATARIST.PRG .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/ATARIST.PRG .
     mv ATARIST.PRG PLAY.PRG
-    cp ~/FictionTools/Templates/Interpreters/Tools/ARTVIEW.APP .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Tools/ARTVIEW.APP .
     cp Resources/ART.PI1 .
     zip -v ${STORY}.zip PLAY.PRG PLAY.PRG
     zip -rv ${STORY}.zip STORY.DAT STORY.DAT
@@ -44,16 +44,16 @@ if [[ $zvalue == 5 && $buildWithLoader == true ]] ; then
     zip2st ${STORY}.zip ${STORY}.st
 elif [[ $zvalue == 5 && $buildWithLoader == false ]] ; then
     echo "Configuring Z5 .ST template without pixel art viewer."
-    cp ~/FictionTools/Templates/Interpreters/ATARIST.PRG .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/ATARIST.PRG .
     mv ATARIST.PRG PLAY.PRG
     zip -v ${STORY}.zip PLAY.PRG PLAY.PRG
     zip -rv ${STORY}.zip STORY.DAT STORY.DAT
     zip2st ${STORY}.zip ${STORY}.st
 elif [[ $zvalue == 3 && $buildWithLoader == true ]] ; then
     echo "Configuring Z3 .ST template with pixel art viewer."
-    cp ~/FictionTools/Templates/Interpreters/ATARIST_Z3.PRG .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/ATARIST_Z3.PRG .
     mv ATARIST_Z3.PRG PLAY.PRG
-    cp ~/FictionTools/Templates/Interpreters/Tools/ARTVIEW.APP .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/Tools/ARTVIEW.APP .
     cp Resources/ART.PI1 .
     zip -v ${STORY}.zip PLAY.PRG PLAY.PRG
     zip -rv ${STORY}.zip STORY.DAT STORY.DAT
@@ -62,7 +62,7 @@ elif [[ $zvalue == 3 && $buildWithLoader == true ]] ; then
     zip2st ${STORY}.zip ${STORY}.st
 elif [[ $zvalue == 3 && $buildWithLoader == false ]] ; then
     echo "Configuring Z3 .ST template without pixel art viewer."
-    cp ~/FictionTools/Templates/Interpreters/ATARIST_Z3.PRG .
+    cp /mnt/c/Source/Puny-BuildTools/Templates/Interpreters/ATARIST_Z3.PRG .
     mv ATARIST_Z3.PRG PLAY.PRG
     zip -v ${STORY}.zip PLAY.PRG PLAY.PRG
     zip -rv ${STORY}.zip STORY.DAT STORY.DAT

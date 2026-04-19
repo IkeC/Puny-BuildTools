@@ -34,7 +34,7 @@ BBC/Elk     -> BBC screen, 8 colors. Use BBC Micro Image Converter. Open an imag
 ------------------------------------------------------------------------- 
 MS-DOS      -> PNG image (320x200, 256 colors), use any image editor.
 -------------------------------------------------------------------------
-ZX Spectrum -> Spectrum SCR converted into a CPM+ .COM format. Create it as follows. Paint your screen using Multipaint. Save SCR as TAPE. Load .TAP file in FUSE. Create a raw screen binary file, called "screen.bin" by using the export display buffer option in FUSE, starts at 0x4000 and has a length 0x1B00. Copy "screen.bin" to ~/FictionTools/scrload directory. In scrload dir, execute ./makescr.sh and SCRLOAD.COM will be the output.
+ZX Spectrum -> Spectrum SCR converted into a CPM+ .COM format. Create it as follows. Paint your screen using Multipaint. Save SCR as TAPE. Load .TAP file in FUSE. Create a raw screen binary file, called "screen.bin" by using the export display buffer option in FUSE, starts at 0x4000 and has a length 0x1B00. Copy "screen.bin" to /mnt/c/Source/Puny-BuildTools/scrload directory. In scrload dir, execute ./makescr.sh and SCRLOAD.COM will be the output.
 -------------------------------------------------------------------------
 Amiga       -> .IFF image with 320x256 resolution and 32 colors. This format is recommended as it is compatible with both OCS and ECS Amigas. Paint your screen in Multipaint, then save it as .PNG file. Now use the ifftool.sh to convert the .PNG image to an Amiga loader executable. 
 -------------------------------------------------------------------------
